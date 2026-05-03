@@ -1,6 +1,11 @@
 import "server-only";
 import { type NextRequest, NextResponse } from "next/server";
-import { createServerClient as createSsrServerClient } from "@supabase/ssr";
+import {
+  createServerClient as createSsrServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
+
+type CookieEntry = { name: string; value: string; options?: CookieOptions };
 
 // Builds a Supabase client wired to the middleware's request/response cookies
 // so calls like getUser() refresh the session token and write the new cookies
@@ -22,7 +27,7 @@ export function createMiddlewareClient(req: NextRequest) {
       getAll() {
         return req.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: CookieEntry[]) {
         for (const { name, value, options } of cookiesToSet) {
           req.cookies.set(name, value);
           response.cookies.set(name, value, options);

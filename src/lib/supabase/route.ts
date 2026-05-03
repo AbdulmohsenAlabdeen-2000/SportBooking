@@ -1,6 +1,11 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { createServerClient as createSsrServerClient } from "@supabase/ssr";
+import {
+  createServerClient as createSsrServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
+
+type CookieEntry = { name: string; value: string; options?: CookieOptions };
 
 // Cookie-bound Supabase client for App Router Server Components and Route
 // Handlers. Uses the **anon** key + the visitor's session cookies — i.e. it
@@ -19,7 +24,7 @@ export function createCookieClient() {
       getAll() {
         return store.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: CookieEntry[]) {
         // In Server Components, set/remove are no-ops (Next forbids them).
         // In Route Handlers, they propagate to the response.
         try {
