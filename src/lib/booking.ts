@@ -1,22 +1,20 @@
 import { isUuid } from "@/lib/api";
+import { normalizeKuwaitPhone } from "@/lib/phone";
 
 export type BookingInput = {
   slot_id: string;
   customer_name: string;
   customer_phone: string;
-  customer_email?: string | null;
-  notes?: string | null;
+  customer_email: string | null;
+  notes: string | null;
 };
 
 export type ValidationFailure = { field: string; error: string };
 
 const NAME_MIN = 2;
-const NAME_MAX = 100;
-const PHONE_MIN = 6;
-const PHONE_MAX = 20;
+const NAME_MAX = 80;
 const NOTES_MAX = 500;
 const EMAIL_MAX = 254;
-const PHONE_RE = /^[0-9+\-\s()]+$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateBookingInput(
@@ -38,14 +36,17 @@ export function validateBookingInput(
     failures.push({ field: "customer_name", error: "invalid_length" });
   }
 
-  const customer_phone = typeof body.customer_phone === "string" ? body.customer_phone.trim() : "";
-  if (!customer_phone) failures.push({ field: "customer_phone", error: "required" });
-  else if (
-    customer_phone.length < PHONE_MIN ||
-    customer_phone.length > PHONE_MAX ||
-    !PHONE_RE.test(customer_phone)
-  ) {
-    failures.push({ field: "customer_phone", error: "invalid_phone" });
+  let normalizedPhone = "";
+  const phoneRaw = typeof body.customer_phone === "string" ? body.customer_phone : "";
+  if (!phoneRaw.trim()) {
+    failures.push({ field: "customer_phone", error: "required" });
+  } else {
+    const result = normalizeKuwaitPhone(phoneRaw);
+    if (!result.ok) {
+      failures.push({ field: "customer_phone", error: result.error });
+    } else {
+      normalizedPhone = result.value;
+    }
   }
 
   let customer_email: string | null = null;
@@ -77,15 +78,12 @@ export function validateBookingInput(
 
   return {
     ok: true,
-    value: { slot_id, customer_name, customer_phone, customer_email, notes },
+    value: {
+      slot_id,
+      customer_name,
+      customer_phone: normalizedPhone,
+      customer_email,
+      notes,
+    },
   };
-}
-
-// Friendly, hard-to-confuse booking reference. 8 chars, no 0/1/I/O.
-const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-export function generateReference(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  let out = "SC-";
-  for (const b of bytes) out += REF_ALPHABET[b % REF_ALPHABET.length];
-  return out;
 }
