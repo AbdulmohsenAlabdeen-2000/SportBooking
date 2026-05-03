@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #0F766E;
+  --brand-accent: #F59E0B;
+  --brand-bg: #F8FAFC;
+}
+
+html, body {
+  background: var(--brand-bg);
+  color: #0f172a;
+}
