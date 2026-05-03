@@ -41,6 +41,60 @@ export function isWithinBookingWindow(dateIso: string): boolean {
   return diffDays >= 0 && diffDays <= BOOKING_WINDOW_DAYS - 1;
 }
 
+// ─── Display formatters ─────────────────────────────────────────────────────
+// All formatters render in Asia/Kuwait so customers always see local wall-clock
+// times regardless of where they're loading the page from.
+
+const KUWAIT_TZ = "Asia/Kuwait";
+
+export function formatKuwaitWeekday(dateIso: string): string {
+  // dateIso = "YYYY-MM-DD". Anchor at noon UTC to avoid edge-case rollovers.
+  const d = new Date(`${dateIso}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    timeZone: KUWAIT_TZ,
+  }).format(d);
+}
+
+export function formatKuwaitDayOfMonth(dateIso: string): string {
+  const d = new Date(`${dateIso}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    timeZone: KUWAIT_TZ,
+  }).format(d);
+}
+
+export function formatKuwaitFullDate(dateIso: string): string {
+  // "Sunday, 03 May 2026"
+  const d = new Date(`${dateIso}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: KUWAIT_TZ,
+  }).format(d);
+}
+
+export function formatKuwaitClock(isoTimestamp: string): string {
+  // "10:00" — 24-hour Kuwait wall clock.
+  const d = new Date(isoTimestamp);
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: KUWAIT_TZ,
+  }).format(d);
+}
+
+export function formatKuwaitTimeRange(startIso: string, endIso: string): string {
+  return `${formatKuwaitClock(startIso)} – ${formatKuwaitClock(endIso)}`;
+}
+
+export function formatKwd(amount: number): string {
+  return `${amount.toFixed(3)} KWD`;
+}
+
 export function nextNDaysIso(n: number): string[] {
   const today = kuwaitTodayIso();
   const baseMs = Date.UTC(
