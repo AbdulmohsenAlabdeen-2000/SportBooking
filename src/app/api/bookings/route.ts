@@ -1,14 +1,33 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
-import { validateBookingInput, generateReference } from "@/lib/booking";
-import type { Booking } from "@/lib/types";
+import { validateBookingInput } from "@/lib/booking";
+import { generateBookingReference } from "@/lib/reference";
+import { getClientIp, isLoopback, rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 const MAX_REFERENCE_RETRIES = 3;
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 60_000;
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  if (!isLoopback(ip)) {
+    const rl = rateLimit(`POST:/api/bookings:${ip}`, RATE_LIMIT, RATE_WINDOW_MS);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "rate_limited" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000)).toString(),
+          },
+        },
+      );
+    }
+  }
+
   let raw: unknown;
   try {
     raw = await req.json();
@@ -29,7 +48,7 @@ export async function POST(req: Request) {
 
   const { data: slot, error: slotErr } = await supabase
     .from("slots")
-    .select("id, court_id, status")
+    .select("id, court_id, status, start_time, end_time")
     .eq("id", input.slot_id)
     .maybeSingle();
   if (slotErr) return jsonError(slotErr.message, 500);
@@ -38,16 +57,14 @@ export async function POST(req: Request) {
 
   const { data: court, error: courtErr } = await supabase
     .from("courts")
-    .select("id, price_per_slot, is_active")
+    .select("id, name, sport, price_per_slot, is_active")
     .eq("id", slot.court_id)
     .maybeSingle();
   if (courtErr) return jsonError(courtErr.message, 500);
   if (!court || !court.is_active) return jsonError("court_not_found", 404);
 
-  // Reference collisions are astronomically unlikely (32^8 ≈ 1.1e12), but the
-  // unique index will reject one if it ever happens — retry a few times.
   for (let attempt = 0; attempt < MAX_REFERENCE_RETRIES; attempt++) {
-    const reference = generateReference();
+    const reference = generateBookingReference();
     const { data, error } = await supabase.rpc("create_booking", {
       p_slot_id: input.slot_id,
       p_court_id: slot.court_id,
@@ -59,16 +76,37 @@ export async function POST(req: Request) {
       p_reference: reference,
     });
 
-    if (!error) {
-      return NextResponse.json({ booking: data as Booking }, { status: 201 });
+    if (!error && data) {
+      const row = data as {
+        reference: string;
+        customer_name: string;
+        customer_phone: string;
+        total_price: number | string;
+        status: string;
+        created_at: string;
+      };
+      return NextResponse.json(
+        {
+          booking: {
+            reference: row.reference,
+            court: { id: court.id, name: court.name, sport: court.sport },
+            slot: { start_time: slot.start_time, end_time: slot.end_time },
+            customer_name: row.customer_name,
+            customer_phone: row.customer_phone,
+            total_price: Number(row.total_price),
+            status: row.status,
+            created_at: row.created_at,
+          },
+        },
+        { status: 201 },
+      );
     }
 
-    const msg = error.message ?? "";
+    const msg = error?.message ?? "";
     if (msg.includes("slot_not_available")) {
       return jsonError("slot_not_available", 409);
     }
     if (msg.includes("bookings_reference_key")) {
-      // Reference collision — try a fresh one.
       continue;
     }
     return jsonError(msg || "booking_failed", 500);

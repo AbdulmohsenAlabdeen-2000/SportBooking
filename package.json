@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "test:concurrency": "tsx scripts/test-double-booking.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
