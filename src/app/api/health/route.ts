@@ -6,13 +6,18 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const supabase = createServerClient();
-    const { error, count } = await supabase
-      .from("courts")
-      .select("*", { count: "exact", head: true });
+    const [courtsRes, slotsRes] = await Promise.all([
+      supabase.from("courts").select("*", { count: "exact", head: true }),
+      supabase.from("slots").select("*", { count: "exact", head: true }),
+    ]);
 
-    if (error) {
+    if (courtsRes.error || slotsRes.error) {
       return NextResponse.json(
-        { ok: false, db: "error", error: error.message },
+        {
+          ok: false,
+          db: "error",
+          error: courtsRes.error?.message ?? slotsRes.error?.message,
+        },
         { status: 500 },
       );
     }
@@ -20,7 +25,8 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       db: "up",
-      courts: count ?? 0,
+      courts: courtsRes.count ?? 0,
+      slots: slotsRes.count ?? 0,
       time: new Date().toISOString(),
     });
   } catch (err) {
