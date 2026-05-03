@@ -5,11 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          DEFAULT: "#0F766E",
-          accent: "#F59E0B",
-          bg: "#F8FAFC",
-        },
+        brand: { DEFAULT: "#0F766E", dark: "#0D5F58" },
+        accent: { DEFAULT: "#F59E0B", dark: "#D97706" },
+        bg: "#F8FAFC",
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
