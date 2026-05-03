@@ -1,0 +1,139 @@
+import Link from "next/link";
+import { headers } from "next/headers";
+import { Suspense } from "react";
+import { Activity, CircleDot, LandPlot } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { Container } from "@/components/ui/Container";
+import type { Court, Sport } from "@/lib/types";
+
+const SPORT_ICON: Record<Sport, typeof Activity> = {
+  padel: Activity,
+  tennis: CircleDot,
+  football: LandPlot,
+};
+
+const SPORT_LABEL: Record<Sport, string> = {
+  padel: "Padel",
+  tennis: "Tennis",
+  football: "Football",
+};
+
+function getBaseUrl() {
+  const h = headers();
+  const host =
+    h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto =
+    h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+async function fetchCourts(): Promise<Court[]> {
+  const res = await fetch(`${getBaseUrl()}/api/courts`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`courts_fetch_failed_${res.status}`);
+  const json = (await res.json()) as { courts: Court[] };
+  return json.courts;
+}
+
+function formatPriceKwd(price: number): string {
+  return `${price.toFixed(3)} KWD`;
+}
+
+function CapacityLabel({ capacity }: { capacity: number }) {
+  return <span>Up to {capacity} players</span>;
+}
+
+function CourtCard({ court }: { court: Court }) {
+  const Icon = SPORT_ICON[court.sport];
+  return (
+    <Link
+      href={`/book?court=${court.id}`}
+      className="group block focus:outline-none"
+    >
+      <Card className="flex h-full flex-col gap-4 transition-shadow group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-brand md:hover:-translate-y-0.5 md:transition-transform">
+        <div className="flex h-32 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <Icon className="h-12 w-12" aria-hidden />
+        </div>
+        <div className="flex flex-1 flex-col">
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand">
+            {SPORT_LABEL[court.sport]}
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            {court.name}
+          </h3>
+          <p className="mt-1 text-sm text-slate-600">
+            <CapacityLabel capacity={court.capacity} />
+          </p>
+          <p className="mt-auto pt-3 text-sm font-medium text-slate-900">
+            From {formatPriceKwd(court.price_per_slot)} / hour
+          </p>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function CourtsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="animate-pulse">
+          <div className="h-32 rounded-xl bg-slate-200" />
+          <div className="mt-4 h-3 w-16 rounded bg-slate-200" />
+          <div className="mt-2 h-5 w-32 rounded bg-slate-200" />
+          <div className="mt-3 h-4 w-24 rounded bg-slate-200" />
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function CourtsFallback() {
+  return (
+    <Card className="text-center text-slate-600">
+      <p className="text-base">Courts loading…</p>
+      <p className="mt-1 text-sm">
+        We're having trouble fetching courts right now. Please try again in a
+        moment.
+      </p>
+    </Card>
+  );
+}
+
+async function CourtsList() {
+  let courts: Court[] = [];
+  try {
+    courts = await fetchCourts();
+  } catch {
+    return <CourtsFallback />;
+  }
+
+  if (courts.length === 0) return <CourtsFallback />;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {courts.map((court) => (
+        <CourtCard key={court.id} court={court} />
+      ))}
+    </div>
+  );
+}
+
+export function OurCourts() {
+  return (
+    <section className="py-12 md:py-16">
+      <Container>
+        <h2 className="text-2xl font-semibold text-slate-900 md:text-3xl">
+          Our Courts
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Pick a court — book the next available slot.
+        </p>
+        <div className="mt-6 md:mt-8">
+          <Suspense fallback={<CourtsSkeleton />}>
+            <CourtsList />
+          </Suspense>
+        </div>
+      </Container>
+    </section>
+  );
+}

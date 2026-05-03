@@ -1,10 +1,17 @@
-export default function Home() {
+import { Hero } from "@/components/landing/Hero";
+import { WhySmash } from "@/components/landing/WhySmash";
+import { OurCourts } from "@/components/landing/OurCourts";
+import { HowItWorks } from "@/components/landing/HowItWorks";
+import { FinalCTA } from "@/components/landing/FinalCTA";
+
+export default function HomePage() {
   return (
-    <main className="min-h-screen flex items-center justify-center p-8 bg-bg">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-brand">Smash Courts Kuwait</h1>
-        <p className="mt-2 text-accent">Customer UI ships in Session 4.</p>
-      </div>
-    </main>
+    <>
+      <Hero />
+      <WhySmash />
+      <OurCourts />
+      <HowItWorks />
+      <FinalCTA />
+    </>
   );
 }
