@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CalendarOff, Loader2, Star, XCircle } from "lucide-react";
+import { CalendarOff, CreditCard, Loader2, Star, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
@@ -24,6 +24,8 @@ type CustomerBooking = {
   reference: string;
   status: BookingStatus;
   total_price: number;
+  payment_url: string | null;
+  refunded_at: string | null;
   court: { id: string; name: string; sport: Sport } | null;
   slot: { start_time: string; end_time: string } | null;
   review: { rating: number; comment: string | null } | null;
@@ -248,8 +250,17 @@ function BookingCard({
             ) : null}
           </div>
         </div>
-        {(cancellable || reviewable) && (
+        {(cancellable || reviewable || booking.status === "pending_payment") && (
           <div className="mt-3 flex flex-wrap justify-end gap-2">
+            {booking.status === "pending_payment" && booking.payment_url ? (
+              <a
+                href={booking.payment_url}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-white hover:bg-accent-dark"
+              >
+                <CreditCard className="h-4 w-4" aria-hidden />{" "}
+                {t.payment_status.pay_now}
+              </a>
+            ) : null}
             {reviewable ? (
               <button
                 type="button"
@@ -277,11 +288,13 @@ function BookingCard({
 
 function StatusPill({ status, t }: { status: BookingStatus; t: Dict }) {
   const cls = {
+    pending_payment: "bg-amber-50 text-amber-800 border-amber-200",
     confirmed: "bg-brand/10 text-brand border-brand/20",
     completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
     cancelled: "bg-red-50 text-red-700 border-red-200",
   }[status];
   const label = {
+    pending_payment: t.payment_status.awaiting,
     confirmed: t.me.status_confirmed,
     completed: t.me.status_completed,
     cancelled: t.me.status_cancelled,

@@ -23,6 +23,8 @@ type Row = {
   reference: string;
   status: BookingStatus;
   total_price: number | string;
+  payment_url: string | null;
+  refunded_at: string | null;
   court: { id: string; name: string; sport: Sport } | { id: string; name: string; sport: Sport }[] | null;
   slot: { start_time: string; end_time: string } | { start_time: string; end_time: string }[] | null;
   reviews: { rating: number; comment: string | null } | { rating: number; comment: string | null }[] | null;
@@ -38,6 +40,8 @@ async function loadMyBookings(userId: string) {
       reference,
       status,
       total_price,
+      payment_url,
+      refunded_at,
       court:courts(id, name, sport),
       slot:slots(start_time, end_time),
       reviews(rating, comment)
@@ -58,6 +62,8 @@ async function loadMyBookings(userId: string) {
       reference: r.reference,
       status: r.status,
       total_price: Number(r.total_price),
+      payment_url: r.payment_url,
+      refunded_at: r.refunded_at,
       court: court ? { id: court.id, name: court.name, sport: court.sport } : null,
       slot: slot ? { start_time: slot.start_time, end_time: slot.end_time } : null,
       review: review

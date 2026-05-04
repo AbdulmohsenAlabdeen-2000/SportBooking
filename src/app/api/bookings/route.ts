@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import { createCookieClient } from "@/lib/supabase/route";
 import { jsonError } from "@/lib/api";
@@ -18,12 +18,25 @@ import {
   LOCALE_COOKIE,
   isSupportedLocale,
 } from "@/lib/i18n/shared";
+import {
+  executePayment,
+  isMyFatoorahConfigured,
+} from "@/lib/payments/myfatoorah";
 
 export const dynamic = "force-dynamic";
 
 const MAX_REFERENCE_RETRIES = 3;
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
+
+function getBaseUrl(): string {
+  const h = headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto =
+    h.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
@@ -129,6 +142,8 @@ export async function POST(req: Request) {
   if (courtErr) return jsonError(courtErr.message, 500);
   if (!court || !court.is_active) return jsonError("court_not_found", 404);
 
+  const paymentEnabled = isMyFatoorahConfigured();
+
   for (let attempt = 0; attempt < MAX_REFERENCE_RETRIES; attempt++) {
     const reference = generateBookingReference();
     const { data, error } = await supabase.rpc("create_booking", {
@@ -152,35 +167,97 @@ export async function POST(req: Request) {
         created_at: string;
       };
 
-      // If the request carried a customer session, link the booking to the
-      // user so it shows up under /me. Stamp the chosen locale on the row
-      // too so the reminder cron can send in the right language. Both
-      // happen as a follow-up update because the create_booking() RPC
-      // predates these columns.
+      // Stamp locale + maybe link user_id. When MyFatoorah is enabled
+      // we ALSO immediately move the booking to pending_payment so the
+      // /me page and admin reflect that the slot is reserved but
+      // unpaid.
+      const updates: Record<string, string | null> = { locale };
+      if (paymentEnabled) updates.status = "pending_payment";
       try {
         const cookieClient = createCookieClient();
         const { data: userResp } = await cookieClient.auth.getUser();
         const userId = userResp.user?.id;
-        const updates: Record<string, string> = { locale };
         if (userId) updates.user_id = userId;
         await supabase
           .from("bookings")
           .update(updates)
           .eq("reference", row.reference);
       } catch {
-        // Don't fail the booking — row is in place, locale will default
-        // to 'en' which is the safe fallback.
+        // Don't fail — row is in place.
       }
 
-      await sendBookingConfirmationSms({
-        rawPhone: row.customer_phone,
+      // ─ If MyFatoorah isn't configured, behave like before: send SMS
+      //   confirmation and return the booking immediately. This keeps
+      //   dev / non-payment deployments working.
+      if (!paymentEnabled) {
+        await sendBookingConfirmationSms({
+          rawPhone: row.customer_phone,
+          customerName: row.customer_name,
+          courtName: court.name,
+          startIso: slot.start_time,
+          endIso: slot.end_time,
+          reference: row.reference,
+          locale,
+        });
+        return NextResponse.json(
+          {
+            booking: {
+              reference: row.reference,
+              court: { id: court.id, name: court.name, sport: court.sport },
+              slot: { start_time: slot.start_time, end_time: slot.end_time },
+              customer_name: row.customer_name,
+              customer_phone: row.customer_phone,
+              total_price: Number(row.total_price),
+              status: row.status,
+              created_at: row.created_at,
+            },
+          },
+          { status: 201 },
+        );
+      }
+
+      // ─ Payment flow — call MyFatoorah ExecutePayment and return the
+      //   hosted-page URL. The webhook + landing page handle the rest.
+      const baseUrl = getBaseUrl();
+      const callbackUrl = `${baseUrl}/book/payment-result?reference=${encodeURIComponent(row.reference)}`;
+      const errorUrl = `${baseUrl}/book/payment-result?reference=${encodeURIComponent(row.reference)}&failed=1`;
+
+      const mf = await executePayment({
+        invoiceAmount: Number(row.total_price),
         customerName: row.customer_name,
-        courtName: court.name,
-        startIso: slot.start_time,
-        endIso: slot.end_time,
-        reference: row.reference,
-        locale,
+        customerEmail: input.customer_email ?? null,
+        customerMobile: row.customer_phone,
+        callbackUrl,
+        errorUrl,
+        customerReference: row.reference,
+        language: locale,
       });
+
+      if (!mf.ok) {
+        // Couldn't initiate payment — release the slot so the customer
+        // can try again, mark booking as cancelled.
+        await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .eq("reference", row.reference);
+        await supabase
+          .from("slots")
+          .update({ status: "open" })
+          .eq("id", input.slot_id);
+        console.error("[bookings] ExecutePayment failed", {
+          reference: row.reference,
+          error: mf.error,
+        });
+        return jsonError(`payment_init_failed:${mf.error}`, 502);
+      }
+
+      await supabase
+        .from("bookings")
+        .update({
+          payment_invoice_id: String(mf.invoiceId),
+          payment_url: mf.paymentUrl,
+        })
+        .eq("reference", row.reference);
 
       return NextResponse.json(
         {
@@ -191,8 +268,12 @@ export async function POST(req: Request) {
             customer_name: row.customer_name,
             customer_phone: row.customer_phone,
             total_price: Number(row.total_price),
-            status: row.status,
+            status: "pending_payment",
             created_at: row.created_at,
+          },
+          payment: {
+            invoice_id: mf.invoiceId,
+            payment_url: mf.paymentUrl,
           },
         },
         { status: 201 },

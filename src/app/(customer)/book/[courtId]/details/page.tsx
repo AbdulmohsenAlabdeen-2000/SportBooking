@@ -39,6 +39,7 @@ type ApiError = {
 
 type BookingResponse = {
   booking: { reference: string };
+  payment?: { invoice_id: number; payment_url: string };
 };
 
 export default function BookingDetailsPage({
@@ -202,6 +203,13 @@ export default function BookingDetailsPage({
 
       if (res.status === 201) {
         const json = (await res.json()) as BookingResponse;
+        // If MyFatoorah is enabled the server hands back a payment URL —
+        // hard-redirect to the hosted payment page; the booking remains
+        // in pending_payment until the webhook fires.
+        if (json.payment?.payment_url) {
+          window.location.href = json.payment.payment_url;
+          return;
+        }
         router.replace(`/book/confirmed/${json.booking.reference}`);
         return;
       }

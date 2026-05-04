@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
 import { isDemoMode } from "@/lib/demo/mode";
 import { updateBookingStatus as demoUpdateStatus } from "@/lib/demo/store";
+import { makeRefund } from "@/lib/payments/myfatoorah";
 import type { BookingStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 const REFERENCE_RE = /^[A-Z]{2,4}-[A-Z0-9-]{4,30}$/;
 
 const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  pending_payment: ["cancelled"],
   confirmed: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
@@ -61,6 +63,17 @@ export async function PATCH(
   }
 
   if (target === "cancelled") {
+    // Read payment fields before cancelling so we know whether to refund.
+    const { data: paid } = await supabase
+      .from("bookings")
+      .select("total_price, payment_invoice_id, paid_at")
+      .eq("reference", reference)
+      .maybeSingle<{
+        total_price: number | string;
+        payment_invoice_id: string | null;
+        paid_at: string | null;
+      }>();
+
     // RPC frees the slot atomically.
     const { data, error } = await supabase.rpc("cancel_booking", {
       p_reference: reference,
@@ -71,6 +84,31 @@ export async function PATCH(
       }
       return jsonError(error.message, 500);
     }
+
+    // If it was paid, refund. Webhook writes refund_id + refunded_at;
+    // we stamp eagerly too so the admin UI updates immediately.
+    if (paid?.payment_invoice_id && paid.paid_at) {
+      const refund = await makeRefund({
+        invoiceId: Number(paid.payment_invoice_id),
+        amount: Number(paid.total_price),
+        comment: `Admin-initiated cancellation for ${reference}`,
+      });
+      if (!refund.ok) {
+        console.error("[refund] admin cancel refund failed", {
+          reference,
+          error: refund.error,
+        });
+      } else {
+        await supabase
+          .from("bookings")
+          .update({
+            refund_id: refund.refundId,
+            refunded_at: new Date().toISOString(),
+          })
+          .eq("reference", reference);
+      }
+    }
+
     return NextResponse.json({ booking: data });
   }
 

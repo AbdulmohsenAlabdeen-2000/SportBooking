@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { createCookieClient } from "@/lib/supabase/route";
 import { jsonError } from "@/lib/api";
+import { makeRefund } from "@/lib/payments/myfatoorah";
 
 export const dynamic = "force-dynamic";
 
 const REFERENCE_RE = /^[A-Z]{2,4}-[A-Z0-9-]{4,30}$/;
 
-// Customer self-service cancel. Only the booking's owner can cancel.
-// Internally calls the same cancel_booking RPC that the admin uses, which
-// flips the booking → cancelled and frees the slot → open atomically.
+// Customer self-service cancel. Owner-only; same atomic cancel_booking
+// RPC the admin uses. If the booking was paid via MyFatoorah, also
+// issue a refund — the webhook later writes refund_id + refunded_at.
 export async function POST(
   _req: Request,
   { params }: { params: { reference: string } },
@@ -24,14 +25,20 @@ export async function POST(
 
   const supabase = createServerClient();
 
-  // Confirm ownership before doing anything destructive. We give the same
-  // 404 for "doesn't exist" and "not yours" so we don't leak the existence
-  // of references to other users.
   const { data: booking, error: lookupErr } = await supabase
     .from("bookings")
-    .select("reference, status, user_id")
+    .select(
+      "reference, status, user_id, total_price, payment_invoice_id, paid_at",
+    )
     .eq("reference", reference)
-    .maybeSingle();
+    .maybeSingle<{
+      reference: string;
+      status: string;
+      user_id: string | null;
+      total_price: number | string;
+      payment_invoice_id: string | null;
+      paid_at: string | null;
+    }>();
   if (lookupErr) return jsonError(lookupErr.message, 500);
   if (!booking || booking.user_id !== user.id) {
     return jsonError("booking_not_found", 404);
@@ -49,5 +56,34 @@ export async function POST(
     }
     return jsonError(error.message, 500);
   }
+
+  // If the booking was paid, issue a refund. Best-effort: if the
+  // refund call fails the cancellation still stands, the admin can
+  // retry the refund manually. The MF webhook writes refund_id +
+  // refunded_at on success.
+  if (booking.payment_invoice_id && booking.paid_at) {
+    const refund = await makeRefund({
+      invoiceId: Number(booking.payment_invoice_id),
+      amount: Number(booking.total_price),
+      comment: `Customer-initiated cancellation for ${reference}`,
+    });
+    if (!refund.ok) {
+      console.error("[refund] customer cancel refund failed", {
+        reference,
+        error: refund.error,
+      });
+    } else {
+      // Stamp eagerly so the UI shows refunded immediately rather than
+      // waiting for the webhook (which may take a few seconds).
+      await supabase
+        .from("bookings")
+        .update({
+          refund_id: refund.refundId,
+          refunded_at: new Date().toISOString(),
+        })
+        .eq("reference", reference);
+    }
+  }
+
   return NextResponse.json({ booking: data });
 }

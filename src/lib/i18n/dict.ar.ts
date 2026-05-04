@@ -559,6 +559,25 @@ export const ar: Dict = {
     badminton: "ريشة طائرة",
     futsal: "فوتسال",
   },
+  payment_result: {
+    missing_reference: "لم نجد مرجع الحجز في هذا الرابط.",
+    not_found: "لم نجد هذا الحجز.",
+    back_to_booking: "العودة إلى الحجز",
+    failed_title: "لم تتم عملية الدفع",
+    failed_sub:
+      "لم يتم خصم أي مبلغ من بطاقتك. تم تحرير الموعد — اختر وقتاً آخر وحاول مرة أخرى.",
+    pending_title: "جارٍ تأكيد الدفع…",
+    pending_sub:
+      "تستغرق هذه العملية عادةً ثوانٍ. حدّث الصفحة بعد قليل لمعرفة النتيجة.",
+    refresh: "تحديث الحالة",
+    try_again: "اختر وقتاً آخر",
+  },
+  payment_status: {
+    awaiting: "بانتظار الدفع",
+    paid: "مدفوع",
+    refunded: "مُسترد",
+    pay_now: "ادفع الآن",
+  },
   passkey: {
     title: "مفاتيح المرور",
     subtitle:

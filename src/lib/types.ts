@@ -25,7 +25,11 @@ export const SPORTS: ReadonlyArray<Sport> = [
 
 export type SlotStatus = "open" | "closed" | "booked";
 
-export type BookingStatus = "confirmed" | "completed" | "cancelled";
+export type BookingStatus =
+  | "pending_payment"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
 
 export interface Court {
   id: string;

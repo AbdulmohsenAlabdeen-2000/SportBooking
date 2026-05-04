@@ -556,6 +556,25 @@ export const en = {
     badminton: "Badminton",
     futsal: "Futsal",
   },
+  payment_result: {
+    missing_reference: "We couldn't find a booking reference in this URL.",
+    not_found: "We couldn't find this booking.",
+    back_to_booking: "Back to booking",
+    failed_title: "Payment didn't go through",
+    failed_sub:
+      "Your card wasn't charged. The slot has been released — pick another time and try again.",
+    pending_title: "Confirming your payment…",
+    pending_sub:
+      "This usually takes a few seconds. Refresh in a moment to see the result.",
+    refresh: "Refresh status",
+    try_again: "Try a different time",
+  },
+  payment_status: {
+    awaiting: "Awaiting payment",
+    paid: "Paid",
+    refunded: "Refunded",
+    pay_now: "Pay now",
+  },
   passkey: {
     title: "Passkeys",
     subtitle:
