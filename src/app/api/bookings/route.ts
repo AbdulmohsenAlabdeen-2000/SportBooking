@@ -143,6 +143,11 @@ export async function POST(req: Request) {
   if (!court || !court.is_active) return jsonError("court_not_found", 404);
 
   const paymentEnabled = isMyFatoorahConfigured();
+  console.error("[bookings] payment env check", {
+    has_api_key: !!process.env.MYFATOORAH_API_KEY,
+    has_base_url: !!process.env.MYFATOORAH_BASE_URL,
+    configured: paymentEnabled,
+  });
 
   for (let attempt = 0; attempt < MAX_REFERENCE_RETRIES; attempt++) {
     const reference = generateBookingReference();
