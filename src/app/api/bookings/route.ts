@@ -153,22 +153,23 @@ export async function POST(req: Request) {
       };
 
       // If the request carried a customer session, link the booking to the
-      // user so it shows up under /me. Done as a follow-up update because
-      // create_booking() RPC predates user accounts and doesn't take a
-      // user_id parameter.
+      // user so it shows up under /me. Stamp the chosen locale on the row
+      // too so the reminder cron can send in the right language. Both
+      // happen as a follow-up update because the create_booking() RPC
+      // predates these columns.
       try {
         const cookieClient = createCookieClient();
         const { data: userResp } = await cookieClient.auth.getUser();
         const userId = userResp.user?.id;
-        if (userId) {
-          await supabase
-            .from("bookings")
-            .update({ user_id: userId })
-            .eq("reference", row.reference);
-        }
+        const updates: Record<string, string> = { locale };
+        if (userId) updates.user_id = userId;
+        await supabase
+          .from("bookings")
+          .update(updates)
+          .eq("reference", row.reference);
       } catch {
-        // Don't fail the booking if the user_id link errors — the row is
-        // already in place; admin can backfill if needed.
+        // Don't fail the booking — row is in place, locale will default
+        // to 'en' which is the safe fallback.
       }
 
       await sendBookingConfirmationSms({

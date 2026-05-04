@@ -541,6 +541,8 @@ export const en = {
   sms: {
     booking_confirmation:
       "Smash Courts Kuwait: Hi {name}, your {court} booking on {date} at {time} is confirmed. Ref: {ref}. See you 10 min before — park at the back gate.",
+    booking_reminder:
+      "Smash Courts Kuwait: Reminder, {name} — your {court} booking is tomorrow ({date}) at {time}. Ref: {ref}. Arrive 10 min early.",
   },
   passkey: {
     title: "Passkeys",

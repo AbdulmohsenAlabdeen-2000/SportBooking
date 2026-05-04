@@ -544,6 +544,8 @@ export const ar: Dict = {
   sms: {
     booking_confirmation:
       "سماش كورتس الكويت: أهلاً {name}، تم تأكيد حجزك في {court} يوم {date} الساعة {time}. المرجع: {ref}. نراك قبل الموعد بـ 10 دقائق — اركن في البوابة الخلفية.",
+    booking_reminder:
+      "سماش كورتس الكويت: تذكير، {name} — حجزك في {court} غداً ({date}) الساعة {time}. المرجع: {ref}. احضر قبل الموعد بـ 10 دقائق.",
   },
   passkey: {
     title: "مفاتيح المرور",
