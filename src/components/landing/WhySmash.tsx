@@ -1,34 +1,23 @@
 import { Calendar, Trophy, Zap } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
+import type { Dict } from "@/lib/i18n/dict.en";
 
-const FEATURES = [
-  {
-    Icon: Zap,
-    title: "Instant booking",
-    body: "Confirm in under a minute.",
-  },
-  {
-    Icon: Trophy,
-    title: "Pro-grade courts",
-    body: "Maintained daily by our team.",
-  },
-  {
-    Icon: Calendar,
-    title: "Book up to 14 days ahead",
-    body: "Plan your week with confidence.",
-  },
-] as const;
+export function WhySmash({ t }: { t: Dict }) {
+  const features = [
+    { Icon: Zap, title: t.why.instant_title, body: t.why.instant_body },
+    { Icon: Trophy, title: t.why.pro_title, body: t.why.pro_body },
+    { Icon: Calendar, title: t.why.plan_title, body: t.why.plan_body },
+  ];
 
-export function WhySmash() {
   return (
     <section className="py-12 md:py-16">
       <Container>
         <h2 className="text-2xl font-semibold text-slate-900 md:text-3xl">
-          Why Smash
+          {t.why.title}
         </h2>
         <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-3">
-          {FEATURES.map(({ Icon, title, body }) => (
+          {features.map(({ Icon, title, body }) => (
             <Card
               key={title}
               className="group transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"

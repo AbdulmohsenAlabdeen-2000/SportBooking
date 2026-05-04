@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { FloatingSportsBg } from "@/components/landing/FloatingSportsBg";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 const COOKIE_KEY = "smash-welcome-seen";
 const STORAGE_KEY = "smash-welcome-seen";
@@ -13,7 +14,7 @@ const STORAGE_KEY = "smash-welcome-seen";
 // can omit this component entirely on subsequent renders — no flash on
 // reload. localStorage is kept as a defence-in-depth fallback.
 
-export function WelcomeOverlay() {
+export function WelcomeOverlay({ t }: { t: Dict }) {
   // "preparing" — first paint, off-state classes (so the entrance
   //               animation has somewhere to come *from*).
   // "entering"  — useEffect bumps to this on next tick, transition fires.
@@ -94,7 +95,7 @@ export function WelcomeOverlay() {
               : "translate-y-2 opacity-0 motion-reduce:translate-y-0",
           ].join(" ")}
         >
-          Smash Courts · Salmiya
+          {t.welcome.eyebrow}
         </p>
 
         <h1
@@ -106,9 +107,9 @@ export function WelcomeOverlay() {
               : "translate-y-4 opacity-0 motion-reduce:translate-y-0",
           ].join(" ")}
         >
-          Welcome to{" "}
+          {t.welcome.headline_part1}{" "}
           <span className="bg-gradient-to-r from-accent via-amber-300 to-accent bg-clip-text text-transparent">
-            Smash Courts
+            {t.welcome.headline_part2}
           </span>
         </h1>
 
@@ -120,7 +121,7 @@ export function WelcomeOverlay() {
               : "translate-y-4 opacity-0 motion-reduce:translate-y-0",
           ].join(" ")}
         >
-          Pick a court. Pick a time. You're playing in under a minute.
+          {t.welcome.sub}
         </p>
 
         {/* Button */}
@@ -134,9 +135,9 @@ export function WelcomeOverlay() {
               : "translate-y-6 opacity-0 motion-reduce:translate-y-0",
           ].join(" ")}
         >
-          <span className="relative z-10">Let&apos;s Smash!</span>
+          <span className="relative z-10">{t.welcome.cta}</span>
           <ArrowRight
-            className="relative z-10 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transform-none"
+            className="relative z-10 h-5 w-5 transition-transform duration-200 group-hover:translate-x-1 rtl:rotate-180 motion-reduce:transform-none"
             aria-hidden
           />
           {/* Shine sweep */}
@@ -154,7 +155,7 @@ export function WelcomeOverlay() {
             isEntering ? "opacity-100" : "opacity-0",
           ].join(" ")}
         >
-          skip
+          {t.common.skip}
         </button>
       </div>
     </div>

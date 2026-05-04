@@ -4,7 +4,9 @@ import { Phone, User } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DemoBanner } from "@/components/DemoBanner";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { getCurrentCustomer } from "@/lib/customer";
+import { format, getDict, getLocale } from "@/lib/i18n";
 
 const PHONE_RAW = "+96599998888";
 const PHONE_PRETTY = "+965 9999 8888";
@@ -29,41 +31,51 @@ function Logo() {
 
 async function Header() {
   const customer = await getCurrentCustomer();
+  const locale = getLocale();
+  const t = getDict(locale);
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200/70 bg-white/95 backdrop-blur shadow-sm">
       <Container className="flex h-full items-center justify-between gap-2">
         <Logo />
         <div className="flex items-center gap-2">
+          <LanguageToggle current={locale} className="hidden sm:inline-flex" />
           {customer ? (
             <Link
               href="/me"
               className="inline-flex h-11 items-center gap-2 rounded-full bg-brand/10 px-3 text-sm font-medium text-brand hover:bg-brand/15"
-              aria-label={`Account: ${customer.name}`}
+              aria-label={`${t.header.account}: ${customer.name}`}
             >
               <User className="h-4 w-4" aria-hidden />
               <span className="hidden md:inline">
                 {customer.name.split(" ")[0]}
               </span>
-              <span className="md:hidden">Account</span>
+              <span className="md:hidden">{t.header.account}</span>
             </Link>
           ) : (
             <Link
               href="/login"
               className="hidden h-11 items-center rounded-full px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 md:inline-flex"
             >
-              Sign in
+              {t.common.sign_in}
             </Link>
           )}
           <a
             href={`tel:${PHONE_RAW}`}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-3 text-brand hover:bg-brand/5 active:bg-brand/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            aria-label={`Call us at ${PHONE_PRETTY}`}
+            aria-label={`${t.header.call_us} ${PHONE_PRETTY}`}
           >
             <Phone className="h-5 w-5" aria-hidden />
-            <span className="hidden text-sm font-medium md:inline">
+            <span className="hidden text-sm font-medium md:inline" dir="ltr">
               {PHONE_PRETTY}
             </span>
           </a>
+        </div>
+      </Container>
+      {/* Mobile language toggle: separate row so it doesn't crowd the
+          phone CTA when the header is squeezed at 390px. */}
+      <Container className="flex h-0 items-center justify-end pe-1 sm:hidden">
+        <div className="-translate-y-2">
+          <LanguageToggle current={locale} />
         </div>
       </Container>
     </header>
@@ -71,18 +83,21 @@ async function Header() {
 }
 
 function Footer() {
+  const locale = getLocale();
+  const t = getDict(locale);
   return (
     <footer className="bg-brand-dark py-8 text-white">
       <Container className="flex flex-col gap-4 text-sm md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <p className="text-base font-semibold">Smash Courts Kuwait</p>
-          <p className="text-white/80">Block 10, Salmiya, Kuwait</p>
+          <p className="text-white/80">{t.footer.address}</p>
         </div>
-        <div className="space-y-1 md:text-right">
+        <div className="space-y-1 md:text-end">
           <p>
             <a
               href={`tel:${PHONE_RAW}`}
               className="text-white hover:underline"
+              dir="ltr"
             >
               {PHONE_PRETTY}
             </a>
@@ -99,7 +114,7 @@ function Footer() {
           </p>
         </div>
         <p className="text-white/60 md:self-end">
-          © {new Date().getFullYear()} Smash Courts Kuwait
+          {format(t.footer.rights, { year: new Date().getFullYear() })}
         </p>
       </Container>
     </footer>

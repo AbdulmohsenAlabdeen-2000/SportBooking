@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Container } from "@/components/ui/Container";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 type Stat = {
   value: number;
@@ -85,14 +86,35 @@ function StatTile({ stat }: { stat: Stat }) {
   );
 }
 
-export function StatsStrip({ courtCount }: { courtCount: number }) {
+export function StatsStrip({
+  courtCount,
+  t,
+}: {
+  courtCount: number;
+  t: Dict;
+}) {
   // Live court count comes from the page (Server Component); the rest
   // are constants of the booking model that don't change at runtime.
   const stats: Stat[] = [
-    { value: courtCount, label: "Pro courts", Icon: LandPlot },
-    { value: 14, suffix: "d", label: "Booking window", Icon: CalendarRange },
-    { value: 15, suffix: "h", label: "Open per day", Icon: Clock },
-    { value: 60, suffix: "s", label: "Average booking", Icon: Calendar },
+    { value: courtCount, label: t.stats.courts, Icon: LandPlot },
+    {
+      value: 14,
+      suffix: t.stats.suffix_days,
+      label: t.stats.booking_window,
+      Icon: CalendarRange,
+    },
+    {
+      value: 15,
+      suffix: t.stats.suffix_hours,
+      label: t.stats.open_per_day,
+      Icon: Clock,
+    },
+    {
+      value: 60,
+      suffix: t.stats.suffix_seconds,
+      label: t.stats.avg_booking,
+      Icon: Calendar,
+    },
   ];
 
   return (

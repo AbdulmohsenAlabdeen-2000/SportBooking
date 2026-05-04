@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { Activity, CircleDot, LandPlot, Star } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
+import { format, getDict } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Sport } from "@/lib/types";
 
 const SPORT_ICON: Record<Sport, typeof Activity> = {
@@ -12,11 +14,11 @@ const SPORT_ICON: Record<Sport, typeof Activity> = {
   football: LandPlot,
 };
 
-const SPORT_LABEL: Record<Sport, string> = {
-  padel: "Padel",
-  tennis: "Tennis",
-  football: "Football",
-};
+function sportLabel(sport: Sport, t: Dict): string {
+  if (sport === "padel") return t.hero.pill_padel;
+  if (sport === "tennis") return t.hero.pill_tennis;
+  return t.hero.pill_football;
+}
 
 function getBaseUrl() {
   const h = headers();
@@ -54,16 +56,14 @@ function formatPriceKwd(price: number): string {
   return `${price.toFixed(3)} KWD`;
 }
 
-function CapacityLabel({ capacity }: { capacity: number }) {
-  return <span>Up to {capacity} players</span>;
-}
-
 function CourtCard({
   court,
   review,
+  t,
 }: {
   court: Court;
   review: ReviewSummary;
+  t: Dict;
 }) {
   const Icon = SPORT_ICON[court.sport];
   return (
@@ -89,7 +89,7 @@ function CourtCard({
         <div className="flex flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-              {SPORT_LABEL[court.sport]}
+              {sportLabel(court.sport, t)}
             </p>
             {review.average !== null ? (
               <span
@@ -105,7 +105,7 @@ function CourtCard({
               </span>
             ) : (
               <span className="text-[10px] uppercase tracking-wider text-slate-400">
-                New
+                {t.courts.new}
               </span>
             )}
           </div>
@@ -113,10 +113,12 @@ function CourtCard({
             {court.name}
           </h3>
           <p className="mt-1 text-sm text-slate-600">
-            <CapacityLabel capacity={court.capacity} />
+            {format(t.courts.capacity, { count: court.capacity })}
           </p>
           <p className="mt-auto pt-3 text-sm font-medium text-slate-900">
-            From {formatPriceKwd(court.price_per_slot)} / hour
+            {format(t.courts.price_per_hour, {
+              price: formatPriceKwd(court.price_per_slot),
+            })}
           </p>
         </div>
       </Card>
@@ -139,27 +141,25 @@ function CourtsSkeleton() {
   );
 }
 
-function CourtsFallback() {
+function CourtsFallback({ t }: { t: Dict }) {
   return (
     <Card className="text-center text-slate-600">
-      <p className="text-base">Courts loading…</p>
-      <p className="mt-1 text-sm">
-        We're having trouble fetching courts right now. Please try again in a
-        moment.
-      </p>
+      <p className="text-base">{t.courts.loading}</p>
+      <p className="mt-1 text-sm">{t.courts.loading_sub}</p>
     </Card>
   );
 }
 
 async function CourtsList() {
+  const t = getDict();
   let courts: Court[] = [];
   try {
     courts = await fetchCourts();
   } catch {
-    return <CourtsFallback />;
+    return <CourtsFallback t={t} />;
   }
 
-  if (courts.length === 0) return <CourtsFallback />;
+  if (courts.length === 0) return <CourtsFallback t={t} />;
 
   // Fetch all review summaries in parallel; one failure leaves a court
   // with the "New" badge instead of breaking the whole list.
@@ -170,21 +170,27 @@ async function CourtsList() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {courts.map((court, i) => (
-        <CourtCard key={court.id} court={court} review={reviews[i]} />
+        <CourtCard
+          key={court.id}
+          court={court}
+          review={reviews[i]}
+          t={t}
+        />
       ))}
     </div>
   );
 }
 
 export function OurCourts() {
+  const t = getDict();
   return (
     <section className="py-12 md:py-16">
       <Container>
         <h2 className="text-2xl font-semibold text-slate-900 md:text-3xl">
-          Our Courts
+          {t.courts.title}
         </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Pick a court — book the next available slot.
+          {t.courts.subtitle}
         </p>
         <div className="mt-6 md:mt-8">
           <Suspense fallback={<CourtsSkeleton />}>

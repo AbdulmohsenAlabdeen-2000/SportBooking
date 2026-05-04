@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { getLocale, isRtl } from "@/lib/i18n";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -35,8 +36,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const locale = getLocale();
+  const dir = isRtl(locale) ? "rtl" : "ltr";
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang={locale} dir={dir} className={inter.variable}>
       <body className="min-h-screen bg-bg font-sans text-slate-900 antialiased">
         {children}
       </body>
