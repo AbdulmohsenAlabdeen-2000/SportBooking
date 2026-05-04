@@ -12,6 +12,8 @@
     "test:concurrency": "tsx scripts/test-double-booking.ts"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^1.14.0",

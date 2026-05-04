@@ -7,6 +7,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { MyBookingsList } from "@/components/customer/MyBookingsList";
 import { CustomerSignOut } from "@/components/customer/CustomerSignOut";
 import { SetPasswordForm } from "@/components/customer/SetPasswordForm";
+import { PasskeysCard } from "@/components/customer/PasskeysCard";
 import { getDict } from "@/lib/i18n";
 import type { BookingStatus, Sport } from "@/lib/types";
 
@@ -113,6 +114,10 @@ export default async function MyAccountPage() {
           <SetPasswordForm />
         </div>
       </Card>
+
+      <div className="mt-3">
+        <PasskeysCard />
+      </div>
     </Container>
   );
 }

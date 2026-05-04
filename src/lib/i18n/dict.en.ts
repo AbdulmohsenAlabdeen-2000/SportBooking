@@ -542,6 +542,35 @@ export const en = {
     booking_confirmation:
       "Smash Courts Kuwait: Hi {name}, your {court} booking on {date} at {time} is confirmed. Ref: {ref}. See you 10 min before — park at the back gate.",
   },
+  passkey: {
+    title: "Passkeys",
+    subtitle:
+      "Sign in with Face ID, Touch ID, or your device's fingerprint — no SMS code needed.",
+    add: "Add a passkey",
+    enrolling: "Enrolling…",
+    empty: "You haven't added any passkeys yet.",
+    rename: "Rename",
+    rename_prompt: "New name for this passkey",
+    remove: "Remove",
+    delete_confirm: "Delete passkey",
+    deleted_success: "Passkey removed.",
+    enrolled_success: "Passkey added — try it on your next sign-in.",
+    hint: "Passkeys are tied to this site. Adding from a new device requires re-enrolling there.",
+    divider: "or",
+    login_button: "Sign in with passkey",
+    err_enroll: "Couldn't add the passkey. Try again.",
+    err_already_registered:
+      "This device is already enrolled. Use it to sign in, or remove the existing entry first.",
+    err_signin: "Couldn't sign in with passkey. Try again.",
+    err_unknown_passkey:
+      "We don't recognize that passkey. Add it under Account first, or use SMS / password.",
+    err_session_bridge:
+      "Passkey verified, but couldn't open your session. Refresh and try again.",
+    err_table_missing:
+      "Passkey storage isn't set up yet. The latest Supabase migration needs to be run.",
+    err_rename: "Couldn't rename. Try again.",
+    err_delete: "Couldn't remove. Try again.",
+  },
 };
 
 export type Dict = typeof en;

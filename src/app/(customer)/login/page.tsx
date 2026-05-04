@@ -15,6 +15,7 @@ import { normalizeKuwaitPhone } from "@/lib/phone";
 import { useDict } from "@/lib/i18n/client";
 import { format } from "@/lib/i18n/shared";
 import type { Dict } from "@/lib/i18n/dict.en";
+import { PasskeyLoginButton } from "@/components/customer/PasskeyLoginButton";
 
 export default function LoginPage() {
   return (
@@ -288,6 +289,18 @@ function LoginForm() {
           />
         </form>
       ) : null}
+
+      <div className="mt-5 flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" />
+        <span>{t.passkey.divider}</span>
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+      <div className="mt-3">
+        <PasskeyLoginButton
+          next={safeRedirect(next)}
+          onError={(msg) => setError(msg || null)}
+        />
+      </div>
 
       <p className="mt-5 text-center text-sm text-slate-600">
         {t.login.new_here}{" "}
