@@ -20,6 +20,7 @@ import {
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
+import { createBrowserClient } from "@/lib/supabase/browser";
 import {
   formatKuwaitFullDate,
   formatKuwaitTimeRange,
@@ -27,6 +28,8 @@ import {
   isValidIsoDate,
 } from "@/lib/time";
 import type { Court, Slot, Sport } from "@/lib/types";
+
+type CustomerProfile = { user_id: string; name: string; phone: string };
 
 const SPORT_ICON: Record<Sport, LucideIcon> = {
   padel: Activity,
@@ -63,6 +66,8 @@ export default function BookingDetailsPage({
   const [court, setCourt] = useState<Court | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -70,6 +75,46 @@ export default function BookingDetailsPage({
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Auth gate: must be signed in to reach this step. If signed in but no
+  // profile row, send to /signup to complete it. Otherwise prefill.
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        const supabase = createBrowserClient();
+        const { data: userResp } = await supabase.auth.getUser();
+        const user = userResp.user;
+        const here = `/book/${params.courtId}/details${
+          slotId && date ? `?slot=${slotId}&date=${date}` : ""
+        }`;
+        if (!user) {
+          router.replace(`/login?next=${encodeURIComponent(here)}`);
+          return;
+        }
+        const { data: row } = await supabase
+          .from("customers")
+          .select("user_id, name, phone")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (cancel) return;
+        if (!row) {
+          router.replace(`/signup?next=${encodeURIComponent(here)}`);
+          return;
+        }
+        setProfile(row as CustomerProfile);
+        setName(row.name);
+        // Strip the +965 prefix for the form field; rejoined on submit.
+        setPhone(row.phone.replace(/^\+?965/, ""));
+        setAuthChecked(true);
+      } catch {
+        if (!cancel) setAuthChecked(true);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [params.courtId, slotId, date, router]);
 
   // Load court + slot for the summary card.
   useEffect(() => {
@@ -217,6 +262,16 @@ export default function BookingDetailsPage({
 
   const SportIcon = court ? SPORT_ICON[court.sport] : null;
 
+  // Render nothing visible until the auth check completes — prevents the
+  // form briefly flashing the unauth'd name/phone state before redirecting.
+  if (!authChecked) {
+    return (
+      <Container className="flex min-h-[60vh] items-center justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" aria-hidden />
+      </Container>
+    );
+  }
+
   return (
     <>
       <Container className="py-6 pb-32 md:py-10 md:pb-32">
@@ -279,49 +334,69 @@ export default function BookingDetailsPage({
               onSubmit={handleSubmit}
               noValidate
             >
-              <Field
-                id="name"
-                label="Full name"
-                required
-                error={errors.name}
-              >
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setName(e.target.value)
-                  }
-                  autoComplete="name"
-                  maxLength={NAME_MAX}
-                  className={inputClass(!!errors.name)}
-                />
-              </Field>
+              {profile ? (
+                <Card className="bg-slate-50">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Booking under
+                  </p>
+                  <p className="mt-1 text-base font-semibold text-slate-900">
+                    {profile.name}
+                  </p>
+                  <p className="text-sm text-slate-600">{profile.phone}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Booking with a different number?{" "}
+                    <Link href="/me" className="font-medium text-brand">
+                      Account
+                    </Link>
+                  </p>
+                </Card>
+              ) : (
+                <>
+                  <Field
+                    id="name"
+                    label="Full name"
+                    required
+                    error={errors.name}
+                  >
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        setName(e.target.value)
+                      }
+                      autoComplete="name"
+                      maxLength={NAME_MAX}
+                      className={inputClass(!!errors.name)}
+                    />
+                  </Field>
 
-              <Field
-                id="phone"
-                label="Phone (8 digits)"
-                required
-                error={errors.phone}
-              >
-                <div className="flex">
-                  <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600">
-                    +965
-                  </span>
-                  <input
+                  <Field
                     id="phone"
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    value={phone}
-                    onChange={(e) =>
-                      setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))
-                    }
-                    placeholder="12345678"
-                    className={`${inputClass(!!errors.phone)} rounded-l-none`}
-                  />
-                </div>
-              </Field>
+                    label="Phone (8 digits)"
+                    required
+                    error={errors.phone}
+                  >
+                    <div className="flex">
+                      <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600">
+                        +965
+                      </span>
+                      <input
+                        id="phone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        value={phone}
+                        onChange={(e) =>
+                          setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))
+                        }
+                        placeholder="12345678"
+                        className={`${inputClass(!!errors.phone)} rounded-l-none`}
+                      />
+                    </div>
+                  </Field>
+                </>
+              )}
 
               <Field id="email" label="Email (optional)" error={errors.email}>
                 <input
