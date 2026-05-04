@@ -29,8 +29,11 @@ export function WhySmash() {
         </h2>
         <div className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-3">
           {FEATURES.map(({ Icon, title, body }) => (
-            <Card key={title}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <Card
+              key={title}
+              className="group transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none">
                 <Icon className="h-6 w-6" aria-hidden />
               </div>
               <h3 className="mt-4 text-base font-semibold text-slate-900">

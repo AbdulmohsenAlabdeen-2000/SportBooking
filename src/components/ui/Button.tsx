@@ -13,7 +13,7 @@ const VARIANT_CLASSES: Record<Variant, string> = {
 };
 
 const BASE_CLASSES =
-  "inline-flex items-center justify-center gap-2 rounded-xl px-5 font-semibold text-base transition-colors min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent";
+  "inline-flex items-center justify-center gap-2 rounded-xl px-5 font-semibold text-base min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.98] disabled:transform-none disabled:shadow-none motion-reduce:transform-none motion-reduce:transition-colors";
 
 export function Button({
   variant = "primary",

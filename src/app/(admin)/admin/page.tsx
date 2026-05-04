@@ -197,7 +197,7 @@ function StatCard({
     slate: "text-slate-900",
   }[tone];
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 transition-shadow duration-200 hover:shadow-md motion-reduce:transition-none">
       <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
         {label}
       </p>
