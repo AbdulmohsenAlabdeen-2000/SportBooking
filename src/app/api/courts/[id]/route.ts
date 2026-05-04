@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError, isUuid } from "@/lib/api";
+import { isDemoMode } from "@/lib/demo/mode";
+import { getCourtById } from "@/lib/demo/store";
 import type { Court } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,12 @@ const COURT_FIELDS =
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   if (!isUuid(params.id)) return jsonError("court_not_found", 404);
+
+  if (isDemoMode()) {
+    const court = getCourtById(params.id);
+    if (!court) return jsonError("court_not_found", 404);
+    return NextResponse.json({ court });
+  }
 
   const supabase = createServerClient();
   const { data, error } = await supabase

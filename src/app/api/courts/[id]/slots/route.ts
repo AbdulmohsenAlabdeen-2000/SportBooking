@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError, isUuid, validateDateParam } from "@/lib/api";
 import { kuwaitDateToUtcRange } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import { getCourtById, listSlotsForCourtAndDate } from "@/lib/demo/store";
 import type { Slot } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!v.ok) return jsonError(v.error, v.status);
 
   const { startUtc, endUtc } = kuwaitDateToUtcRange(v.date);
+
+  if (isDemoMode()) {
+    const court = getCourtById(params.id);
+    if (!court) return jsonError("court_not_found", 404);
+    const slots = listSlotsForCourtAndDate(params.id, startUtc, endUtc);
+    return NextResponse.json({ slots });
+  }
+
   const supabase = createServerClient();
 
   const { data: court, error: courtErr } = await supabase

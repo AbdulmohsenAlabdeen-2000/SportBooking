@@ -6,6 +6,8 @@ import {
   kuwaitDateToUtcRange,
   nextNDaysIso,
 } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import { getCourtById, listSlotsInRange } from "@/lib/demo/store";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,28 @@ type DaySummary = { date: string; open_count: number; total_count: number };
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   if (!isUuid(params.id)) return jsonError("court_not_found", 404);
+
+  const days = nextNDaysIso(BOOKING_WINDOW_DAYS);
+  const windowStart = kuwaitDateToUtcRange(days[0]).startUtc;
+  const windowEnd = kuwaitDateToUtcRange(days[days.length - 1]).endUtc;
+
+  if (isDemoMode()) {
+    const court = getCourtById(params.id);
+    if (!court) return jsonError("court_not_found", 404);
+    const all = listSlotsInRange(params.id, windowStart, windowEnd);
+    const summary = days.map<DaySummary>((d) => {
+      const range = kuwaitDateToUtcRange(d);
+      const dayRows = all.filter(
+        (s) => s.start_time >= range.startUtc && s.start_time < range.endUtc,
+      );
+      return {
+        date: d,
+        open_count: dayRows.filter((s) => s.status === "open").length,
+        total_count: dayRows.length,
+      };
+    });
+    return NextResponse.json({ days: summary });
+  }
 
   const supabase = createServerClient();
 
@@ -23,10 +47,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     .maybeSingle();
   if (courtErr) return jsonError(courtErr.message, 500);
   if (!court || !court.is_active) return jsonError("court_not_found", 404);
-
-  const days = nextNDaysIso(BOOKING_WINDOW_DAYS);
-  const windowStart = kuwaitDateToUtcRange(days[0]).startUtc;
-  const windowEnd = kuwaitDateToUtcRange(days[days.length - 1]).endUtc;
 
   const { data, error } = await supabase
     .from("slots")

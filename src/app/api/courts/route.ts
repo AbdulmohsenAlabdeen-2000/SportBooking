@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
+import { isDemoMode } from "@/lib/demo/mode";
+import { listActiveCourts } from "@/lib/demo/store";
 import type { Court } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +11,10 @@ const COURT_FIELDS =
   "id, name, sport, description, capacity, price_per_slot, slot_duration_minutes, image_url";
 
 export async function GET() {
+  if (isDemoMode()) {
+    return NextResponse.json({ courts: listActiveCourts() });
+  }
+
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("courts")
