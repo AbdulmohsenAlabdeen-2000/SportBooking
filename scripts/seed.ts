@@ -1,5 +1,10 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+
+// Load .env.local first (Next's convention), then fall back to .env so plain
+// `npm run seed` works without DOTENV_CONFIG_PATH gymnastics.
+loadEnv({ path: '.env.local' });
+loadEnv();
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
