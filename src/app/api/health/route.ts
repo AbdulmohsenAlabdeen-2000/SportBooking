@@ -1,9 +1,34 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { isDemoMode } from "@/lib/demo/mode";
+import { listActiveCourts, listSlotsInRange } from "@/lib/demo/store";
+import {
+  BOOKING_WINDOW_DAYS,
+  kuwaitDateToUtcRange,
+  nextNDaysIso,
+} from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (isDemoMode()) {
+    const courts = listActiveCourts();
+    const days = nextNDaysIso(BOOKING_WINDOW_DAYS);
+    const startUtc = kuwaitDateToUtcRange(days[0]).startUtc;
+    const endUtc = kuwaitDateToUtcRange(days[days.length - 1]).endUtc;
+    const totalSlots = courts.reduce(
+      (sum, c) => sum + listSlotsInRange(c.id, startUtc, endUtc).length,
+      0,
+    );
+    return NextResponse.json({
+      ok: true,
+      db: "demo",
+      courts: courts.length,
+      slots: totalSlots,
+      time: new Date().toISOString(),
+    });
+  }
+
   try {
     const supabase = createServerClient();
     const [courtsRes, slotsRes] = await Promise.all([

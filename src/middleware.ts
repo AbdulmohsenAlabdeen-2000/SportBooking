@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
 import { isAdminEmail } from "@/lib/auth";
+import { isDemoMode } from "@/lib/demo/mode";
 
 const LOGIN_PATH = "/admin/login";
 
@@ -9,6 +10,10 @@ export async function middleware(req: NextRequest) {
 
   // The login page itself must be reachable without a session.
   if (pathname === LOGIN_PATH) return NextResponse.next();
+
+  // Demo mode skips all auth — there's no Supabase to talk to. The admin
+  // pages render their own "Demo mode" notice instead of real data.
+  if (isDemoMode()) return NextResponse.next();
 
   const isApi = pathname.startsWith("/api/");
 
