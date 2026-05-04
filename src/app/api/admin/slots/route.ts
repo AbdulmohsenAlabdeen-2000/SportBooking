@@ -120,3 +120,70 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ slots });
 }
+
+// POST /api/admin/slots — create a custom slot outside the default
+// 08:00–22:00 window (e.g., a 23:00 slot for a special event). Body:
+// { court_id, start_time, end_time }. start_time/end_time are ISO 8601.
+// 409 if (court_id, start_time) already exists.
+type CreateBody = {
+  court_id?: string;
+  start_time?: string;
+  end_time?: string;
+};
+
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+export async function POST(req: Request) {
+  let body: CreateBody;
+  try {
+    body = (await req.json()) as CreateBody;
+  } catch {
+    return jsonError("invalid_json", 400);
+  }
+  const courtId = body.court_id ?? "";
+  const startTime = body.start_time ?? "";
+  const endTime = body.end_time ?? "";
+
+  if (!isUuid(courtId)) return jsonError("invalid_court_id", 400);
+  if (!ISO_RE.test(startTime)) return jsonError("invalid_start_time", 400);
+  if (!ISO_RE.test(endTime)) return jsonError("invalid_end_time", 400);
+
+  const startMs = Date.parse(startTime);
+  const endMs = Date.parse(endTime);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return jsonError("invalid_time_range", 400);
+  }
+  if (endMs <= startMs) return jsonError("invalid_time_range", 400);
+
+  const supabase = createServerClient();
+
+  // Confirm the court exists; we want a clean 404 instead of an FK error.
+  const { data: court, error: courtErr } = await supabase
+    .from("courts")
+    .select("id, is_active")
+    .eq("id", courtId)
+    .maybeSingle();
+  if (courtErr) return jsonError(courtErr.message, 500);
+  if (!court) return jsonError("court_not_found", 404);
+
+  const { data, error } = await supabase
+    .from("slots")
+    .insert({
+      court_id: courtId,
+      start_time: new Date(startMs).toISOString(),
+      end_time: new Date(endMs).toISOString(),
+      status: "open",
+    })
+    .select("id, court_id, start_time, end_time, status")
+    .maybeSingle();
+
+  if (error) {
+    if (error.message.toLowerCase().includes("duplicate")) {
+      return jsonError("slot_exists", 409);
+    }
+    return jsonError(error.message, 500);
+  }
+  if (!data) return jsonError("slot_create_failed", 500);
+
+  return NextResponse.json({ slot: data }, { status: 201 });
+}

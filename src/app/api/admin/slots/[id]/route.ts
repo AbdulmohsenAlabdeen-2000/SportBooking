@@ -65,3 +65,42 @@ export async function PATCH(
 
   return NextResponse.json({ slot: data });
 }
+
+// DELETE /api/admin/slots/[id] — hard-delete an unused slot. Allowed only
+// when status != 'booked' and no bookings reference it. Used to remove
+// custom slots that were added by mistake or to prune past slots.
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { id: string } },
+) {
+  if (!isUuid(params.id)) return jsonError("slot_not_found", 404);
+
+  const supabase = createServerClient();
+
+  const { data: current, error: lookupErr } = await supabase
+    .from("slots")
+    .select("id, status")
+    .eq("id", params.id)
+    .maybeSingle();
+  if (lookupErr) return jsonError(lookupErr.message, 500);
+  if (!current) return jsonError("slot_not_found", 404);
+  if (current.status === "booked") return jsonError("slot_has_booking", 409);
+
+  // Even a 'closed' or 'open' slot might have a historical booking row that
+  // references it (e.g. a cancelled booking). The bookings.slot_id FK has no
+  // cascade, so the delete would fail; pre-checking yields a clean 409.
+  const { count, error: countErr } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("slot_id", params.id);
+  if (countErr) return jsonError(countErr.message, 500);
+  if ((count ?? 0) > 0) return jsonError("slot_has_booking", 409);
+
+  const { error: delErr } = await supabase
+    .from("slots")
+    .delete()
+    .eq("id", params.id);
+  if (delErr) return jsonError(delErr.message, 500);
+
+  return NextResponse.json({ ok: true });
+}
