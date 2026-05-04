@@ -171,18 +171,6 @@ export async function POST(req: Request) {
         // already in place; admin can backfill if needed.
       }
 
-      // Diagnostic — confirms the SMS dispatch site was reached and shows
-      // which TWILIO_* vars are visible to the function at runtime. Safe
-      // to leave in: it doesn't print secrets.
-      console.error("[bookings] dispatching SMS", {
-        reference: row.reference,
-        twilio_env: {
-          sid: !!process.env.TWILIO_ACCOUNT_SID,
-          token: !!process.env.TWILIO_AUTH_TOKEN,
-          from: !!process.env.TWILIO_FROM,
-        },
-      });
-
       await sendBookingConfirmationSms({
         rawPhone: row.customer_phone,
         customerName: row.customer_name,
