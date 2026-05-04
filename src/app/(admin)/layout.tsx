@@ -4,6 +4,7 @@ import { Building2 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { AdminSidebar, AdminBottomNav } from "@/components/admin/AdminNav";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata = {
   title: "Admin — Smash Courts Kuwait",
@@ -22,7 +23,8 @@ export default async function AdminLayout({
   const user = await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-bg text-slate-900">
+    <ToastProvider>
+      <div className="min-h-screen bg-bg text-slate-900">
       {/* Top bar */}
       <header className="sticky top-0 z-20 h-14 border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4">
@@ -53,6 +55,7 @@ export default async function AdminLayout({
       </div>
 
       <AdminBottomNav />
-    </div>
+      </div>
+    </ToastProvider>
   );
 }
