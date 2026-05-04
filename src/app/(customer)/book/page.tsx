@@ -6,6 +6,8 @@ import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import { isUuid } from "@/lib/api";
 import { formatKwd } from "@/lib/time";
+import { format, getDict } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Sport } from "@/lib/types";
 
 const SPORT_ICON: Record<Sport, typeof Activity> = {
@@ -13,11 +15,12 @@ const SPORT_ICON: Record<Sport, typeof Activity> = {
   tennis: CircleDot,
   football: LandPlot,
 };
-const SPORT_LABEL: Record<Sport, string> = {
-  padel: "Padel",
-  tennis: "Tennis",
-  football: "Football",
-};
+
+function sportLabel(sport: Sport, t: Dict): string {
+  if (sport === "padel") return t.hero.pill_padel;
+  if (sport === "tennis") return t.hero.pill_tennis;
+  return t.hero.pill_football;
+}
 
 function getBaseUrl() {
   const h = headers();
@@ -47,12 +50,13 @@ export default async function CourtPickerPage({
     redirect(`/book/${incoming}`);
   }
 
+  const t = getDict();
   let courts: Court[] = [];
   let error: string | null = null;
   try {
     courts = await fetchCourts();
   } catch {
-    error = "Couldn't load courts. Please refresh.";
+    error = t.book.courts_load_error;
   }
 
   return (
@@ -61,12 +65,16 @@ export default async function CourtPickerPage({
         href="/"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden />
-        Back
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
+        {t.common.back}
       </Link>
 
-      <h1 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Pick a Court</h1>
-      <p className="mt-1 text-sm text-slate-600">Choose where you want to play.</p>
+      <h1 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
+        {t.book.pick_court_title}
+      </h1>
+      <p className="mt-1 text-sm text-slate-600">
+        {t.book.pick_court_subtitle}
+      </p>
 
       {error ? (
         <Card className="mt-6 text-center text-slate-600">
@@ -81,7 +89,7 @@ export default async function CourtPickerPage({
                 <Link
                   href={`/book/${court.id}`}
                   className="block focus:outline-none"
-                  aria-label={`Pick ${court.name}`}
+                  aria-label={format(t.book.pick_label, { name: court.name })}
                 >
                   <Card className="flex items-center gap-4 transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand">
                     {court.image_url ? (
@@ -100,16 +108,22 @@ export default async function CourtPickerPage({
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-                        {SPORT_LABEL[court.sport]}
+                        {sportLabel(court.sport, t)}
                       </p>
                       <h2 className="mt-0.5 truncate text-base font-semibold text-slate-900">
                         {court.name}
                       </h2>
                       <p className="mt-0.5 text-sm text-slate-600">
-                        Up to {court.capacity} · {formatKwd(court.price_per_slot)} / hour
+                        {format(t.book.capacity_short, {
+                          capacity: court.capacity,
+                          price: formatKwd(court.price_per_slot),
+                        })}
                       </p>
                     </div>
-                    <ArrowRight className="h-5 w-5 flex-none text-slate-400" aria-hidden />
+                    <ArrowRight
+                      className="h-5 w-5 flex-none text-slate-400 rtl:rotate-180"
+                      aria-hidden
+                    />
                   </Card>
                 </Link>
               </li>

@@ -15,6 +15,8 @@ import {
   formatKuwaitTimeRange,
   formatKwd,
 } from "@/lib/time";
+import { getDict } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Sport } from "@/lib/types";
 
 const SPORT_ICON: Record<Sport, LucideIcon> = {
@@ -22,11 +24,12 @@ const SPORT_ICON: Record<Sport, LucideIcon> = {
   tennis: CircleDot,
   football: LandPlot,
 };
-const SPORT_LABEL: Record<Sport, string> = {
-  padel: "Padel",
-  tennis: "Tennis",
-  football: "Football",
-};
+
+function sportLabel(sport: Sport, t: Dict): string {
+  if (sport === "padel") return t.hero.pill_padel;
+  if (sport === "tennis") return t.hero.pill_tennis;
+  return t.hero.pill_football;
+}
 
 type BookingPayload = {
   booking: {
@@ -68,6 +71,7 @@ export default async function ConfirmationPage({
 }: {
   params: { reference: string };
 }) {
+  const t = getDict();
   let payload: BookingPayload | null = null;
   let fetchError = false;
   try {
@@ -80,9 +84,9 @@ export default async function ConfirmationPage({
     return (
       <Container className="py-10">
         <Card className="text-center text-slate-700">
-          <p>Couldn't load this booking right now.</p>
+          <p>{t.confirmed.load_error}</p>
           <Link href="/" className="mt-4 inline-block text-brand underline">
-            Back to home
+            {t.confirmed.back_home}
           </Link>
         </Card>
       </Container>
@@ -93,15 +97,13 @@ export default async function ConfirmationPage({
     return (
       <Container className="py-10">
         <Card className="text-center text-slate-700">
-          <p className="text-base font-semibold">Booking not found</p>
-          <p className="mt-1 text-sm">
-            That reference doesn't match any booking we have on file.
-          </p>
+          <p className="text-base font-semibold">{t.confirmed.not_found_title}</p>
+          <p className="mt-1 text-sm">{t.confirmed.not_found_sub}</p>
           <Link
             href="/"
             className="mt-5 inline-flex h-11 items-center rounded-full bg-brand px-5 font-semibold text-white"
           >
-            Back to home
+            {t.confirmed.back_home}
           </Link>
         </Card>
       </Container>
@@ -118,17 +120,14 @@ export default async function ConfirmationPage({
           <CheckCircle2 className="h-10 w-10" aria-hidden />
         </span>
         <h1 className="mt-4 text-2xl font-bold text-slate-900 md:text-3xl">
-          Booking Confirmed
+          {t.confirmed.title}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          We've sent your slot to the front desk.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t.confirmed.sub}</p>
       </div>
 
-      {/* Reference card */}
       <Card className="mt-6">
         <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-          Reference
+          {t.confirmed.reference}
         </p>
         <div className="mt-1 flex items-center justify-between gap-3">
           <p className="font-mono text-xl font-semibold tracking-wider text-slate-900 md:text-2xl">
@@ -138,7 +137,6 @@ export default async function ConfirmationPage({
         </div>
       </Card>
 
-      {/* Booking details */}
       <Card className="mt-4">
         <ul className="divide-y divide-slate-200 text-sm">
           {booking.court && (
@@ -150,7 +148,7 @@ export default async function ConfirmationPage({
               )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-                  {SPORT_LABEL[booking.court.sport]}
+                  {sportLabel(booking.court.sport, t)}
                 </p>
                 <p className="text-base font-semibold text-slate-900">
                   {booking.court.name}
@@ -160,35 +158,37 @@ export default async function ConfirmationPage({
           )}
           {booking.slot && (
             <li className="grid grid-cols-2 gap-2 py-3">
-              <span className="text-slate-500">Date</span>
-              <span className="text-right text-slate-900">
+              <span className="text-slate-500">{t.confirmed.date}</span>
+              <span className="text-end text-slate-900">
                 {formatKuwaitFullDate(booking.slot.start_time.slice(0, 10))}
               </span>
-              <span className="text-slate-500">Time</span>
-              <span className="text-right text-slate-900">
+              <span className="text-slate-500">{t.confirmed.time}</span>
+              <span className="text-end text-slate-900">
                 {formatKuwaitTimeRange(booking.slot.start_time, booking.slot.end_time)}
               </span>
             </li>
           )}
           <li className="grid grid-cols-2 gap-2 py-3">
-            <span className="text-slate-500">Total</span>
-            <span className="text-right font-semibold text-slate-900">
+            <span className="text-slate-500">{t.confirmed.total}</span>
+            <span className="text-end font-semibold text-slate-900">
               {formatKwd(booking.total_price)}
             </span>
           </li>
           <li className="grid grid-cols-2 gap-2 py-3 last:pb-0">
-            <span className="text-slate-500">Booked under</span>
-            <span className="text-right text-slate-900">
+            <span className="text-slate-500">{t.confirmed.booked_under}</span>
+            <span className="text-end text-slate-900">
               {booking.customer_name}
               <br />
-              <span className="text-slate-600">{booking.customer_phone}</span>
+              <span className="text-slate-600" dir="ltr">
+                {booking.customer_phone}
+              </span>
             </span>
           </li>
         </ul>
       </Card>
 
       <p className="mt-4 rounded-xl bg-brand/5 px-4 py-3 text-sm text-slate-700">
-        We'll see you 10 minutes before your slot. Park at the back gate.
+        {t.confirmed.arrive_note}
       </p>
 
       <div className="mt-6 flex flex-col gap-3">
@@ -196,13 +196,13 @@ export default async function ConfirmationPage({
           href="/book"
           className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 text-base font-semibold text-white shadow-md hover:bg-accent-dark"
         >
-          Book another court
+          {t.confirmed.book_another}
         </Link>
         <Link
           href="/"
           className="inline-flex h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-6 text-base font-semibold text-slate-700 hover:bg-slate-50"
         >
-          Done
+          {t.common.done}
         </Link>
       </div>
     </Container>

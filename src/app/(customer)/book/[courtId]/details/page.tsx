@@ -27,6 +27,8 @@ import {
   formatKwd,
   isValidIsoDate,
 } from "@/lib/time";
+import { useDict } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Slot, Sport } from "@/lib/types";
 
 type CustomerProfile = { user_id: string; name: string; phone: string };
@@ -56,6 +58,7 @@ export default function BookingDetailsPage({
 }: {
   params: { courtId: string };
 }) {
+  const t = useDict();
   const router = useRouter();
   const sp = useSearchParams();
   const slotId = sp.get("slot");
@@ -76,8 +79,6 @@ export default function BookingDetailsPage({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Auth gate: must be signed in to reach this step. If signed in but no
-  // profile row, send to /signup to complete it. Otherwise prefill.
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -104,7 +105,6 @@ export default function BookingDetailsPage({
         }
         setProfile(row as CustomerProfile);
         setName(row.name);
-        // Strip the +965 prefix for the form field; rejoined on submit.
         setPhone(row.phone.replace(/^\+?965/, ""));
         setAuthChecked(true);
       } catch {
@@ -116,11 +116,10 @@ export default function BookingDetailsPage({
     };
   }, [params.courtId, slotId, date, router]);
 
-  // Load court + slot for the summary card.
   useEffect(() => {
     let cancel = false;
     if (!slotId || !date) {
-      setLoadError("Missing slot or date — pick a time first.");
+      setLoadError(t.book.err_missing_slot);
       return;
     }
     (async () => {
@@ -142,17 +141,16 @@ export default function BookingDetailsPage({
         setCourt(courtJson.court);
         setSlot(found);
         if (found.status !== "open") {
-          setLoadError("That slot is no longer available. Pick another time.");
+          setLoadError(t.book.err_slot_unavailable);
         }
       } catch {
-        if (!cancel)
-          setLoadError("Couldn't load slot details. Pick another time.");
+        if (!cancel) setLoadError(t.book.err_load_slot);
       }
     })();
     return () => {
       cancel = true;
     };
-  }, [params.courtId, slotId, date]);
+  }, [params.courtId, slotId, date, t.book.err_missing_slot, t.book.err_slot_unavailable, t.book.err_load_slot]);
 
   const backToStep2 = useMemo(() => {
     const qs = new URLSearchParams();
@@ -171,18 +169,18 @@ export default function BookingDetailsPage({
     const e: Record<string, string> = {};
     const trimmedName = name.trim();
     if (trimmedName.length < NAME_MIN || trimmedName.length > NAME_MAX) {
-      e.name = `Name must be ${NAME_MIN}–${NAME_MAX} characters.`;
+      e.name = t.book.err_name_length;
     }
     const phoneDigits = phone.replace(/\D/g, "");
     if (phoneDigits.length !== 8) {
-      e.phone = "Enter your 8-digit Kuwait phone number.";
+      e.phone = t.book.err_phone;
     }
     const trimmedEmail = email.trim();
     if (trimmedEmail && !EMAIL_RE.test(trimmedEmail)) {
-      e.email = "Enter a valid email or leave blank.";
+      e.email = t.book.err_email;
     }
     if (notes.length > NOTES_MAX) {
-      e.notes = `Notes must be ${NOTES_MAX} characters or fewer.`;
+      e.notes = t.book.err_notes_long;
     }
     return e;
   }
@@ -223,10 +221,7 @@ export default function BookingDetailsPage({
       const errJson = (await res.json().catch(() => ({}))) as ApiError;
 
       if (res.status === 409) {
-        toast(
-          "That slot was just booked by someone else. Pick another time.",
-          "error",
-        );
+        toast(t.book.err_slot_taken, "error");
         router.push(backToStep2Stale);
         return;
       }
@@ -234,12 +229,12 @@ export default function BookingDetailsPage({
       if (res.status === 400 && Array.isArray(errJson.details)) {
         const fieldMap: Record<string, string> = {};
         for (const d of errJson.details) {
-          if (d.field === "customer_name") fieldMap.name = humanize(d.error);
+          if (d.field === "customer_name") fieldMap.name = humanize(d.error, t);
           else if (d.field === "customer_phone")
-            fieldMap.phone = humanize(d.error);
+            fieldMap.phone = humanize(d.error, t);
           else if (d.field === "customer_email")
-            fieldMap.email = humanize(d.error);
-          else if (d.field === "notes") fieldMap.notes = humanize(d.error);
+            fieldMap.email = humanize(d.error, t);
+          else if (d.field === "notes") fieldMap.notes = humanize(d.error, t);
         }
         if (Object.keys(fieldMap).length > 0) {
           setErrors(fieldMap);
@@ -248,13 +243,13 @@ export default function BookingDetailsPage({
       }
 
       if (res.status === 429) {
-        toast("Too many attempts — wait a minute and try again.", "error");
+        toast(t.book.err_too_many, "error");
         return;
       }
 
-      toast("Something went wrong. Please try again.", "error");
+      toast(t.book.err_generic, "error");
     } catch {
-      toast("Network error. Check your connection and try again.", "error");
+      toast(t.book.err_network, "error");
     } finally {
       setSubmitting(false);
     }
@@ -262,8 +257,6 @@ export default function BookingDetailsPage({
 
   const SportIcon = court ? SPORT_ICON[court.sport] : null;
 
-  // Render nothing visible until the auth check completes — prevents the
-  // form briefly flashing the unauth'd name/phone state before redirecting.
   if (!authChecked) {
     return (
       <Container className="flex min-h-[60vh] items-center justify-center py-10">
@@ -279,11 +272,12 @@ export default function BookingDetailsPage({
           href={backToStep2}
           className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden /> Back
+          <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />{" "}
+          {t.common.back}
         </Link>
 
         <h1 className="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
-          Your Details
+          {t.book.details_title}
         </h1>
 
         {loadError ? (
@@ -293,12 +287,11 @@ export default function BookingDetailsPage({
               href={backToStep2}
               className="mt-4 inline-block text-brand underline"
             >
-              Back to time selection
+              {t.book.details_back}
             </Link>
           </Card>
         ) : (
           <>
-            {/* Read-only summary */}
             <Card className="mt-6">
               {court && slot && date ? (
                 <div className="flex gap-3">
@@ -327,7 +320,6 @@ export default function BookingDetailsPage({
               )}
             </Card>
 
-            {/* Form */}
             <form
               id="booking-form"
               className="mt-6 space-y-5"
@@ -337,16 +329,18 @@ export default function BookingDetailsPage({
               {profile ? (
                 <Card className="bg-slate-50">
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Booking under
+                    {t.book.booking_under}
                   </p>
                   <p className="mt-1 text-base font-semibold text-slate-900">
                     {profile.name}
                   </p>
-                  <p className="text-sm text-slate-600">{profile.phone}</p>
+                  <p className="text-sm text-slate-600" dir="ltr">
+                    {profile.phone}
+                  </p>
                   <p className="mt-2 text-xs text-slate-500">
-                    Booking with a different number?{" "}
+                    {t.book.different_number}{" "}
                     <Link href="/me" className="font-medium text-brand">
-                      Account
+                      {t.book.account_link}
                     </Link>
                   </p>
                 </Card>
@@ -354,7 +348,7 @@ export default function BookingDetailsPage({
                 <>
                   <Field
                     id="name"
-                    label="Full name"
+                    label={t.book.full_name}
                     required
                     error={errors.name}
                   >
@@ -373,11 +367,11 @@ export default function BookingDetailsPage({
 
                   <Field
                     id="phone"
-                    label="Phone (8 digits)"
+                    label={t.book.phone_label}
                     required
                     error={errors.phone}
                   >
-                    <div className="flex">
+                    <div className="flex" dir="ltr">
                       <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600">
                         +965
                       </span>
@@ -398,7 +392,7 @@ export default function BookingDetailsPage({
                 </>
               )}
 
-              <Field id="email" label="Email (optional)" error={errors.email}>
+              <Field id="email" label={t.book.email_label} error={errors.email}>
                 <input
                   id="email"
                   type="email"
@@ -410,7 +404,7 @@ export default function BookingDetailsPage({
                 />
               </Field>
 
-              <Field id="notes" label="Notes (optional)" error={errors.notes}>
+              <Field id="notes" label={t.book.notes_label} error={errors.notes}>
                 <textarea
                   id="notes"
                   rows={3}
@@ -419,7 +413,7 @@ export default function BookingDetailsPage({
                   maxLength={NOTES_MAX}
                   className={inputClass(!!errors.notes, true)}
                 />
-                <p className="mt-1 text-right text-xs text-slate-500">
+                <p className="mt-1 text-end text-xs text-slate-500">
                   {notes.length}/{NOTES_MAX}
                 </p>
               </Field>
@@ -428,7 +422,6 @@ export default function BookingDetailsPage({
         )}
       </Container>
 
-      {/* Sticky bottom bar */}
       {!loadError && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur">
           <Container className="py-3">
@@ -446,11 +439,11 @@ export default function BookingDetailsPage({
               {submitting ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                  Booking…
+                  {t.book.booking_progress}
                 </>
               ) : (
                 <>
-                  Confirm Booking
+                  {t.book.confirm_booking}
                   {court ? ` · ${formatKwd(court.price_per_slot)}` : ""}
                 </>
               )}
@@ -481,7 +474,7 @@ function Field({
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-900">
         {label}
-        {required ? <span className="ml-0.5 text-red-600">*</span> : null}
+        {required ? <span className="ms-0.5 text-red-600">*</span> : null}
       </label>
       <div className="mt-1">{children}</div>
       {error ? <p className="mt-1 text-sm text-red-600">{error}</p> : null}
@@ -514,20 +507,20 @@ function SummarySkeleton() {
   );
 }
 
-function humanize(code: string): string {
+function humanize(code: string, t: Dict): string {
   switch (code) {
     case "required":
-      return "This field is required.";
+      return t.book.err_field_required;
     case "invalid_length":
-      return `Must be ${NAME_MIN}–${NAME_MAX} characters.`;
+      return t.book.err_name_length;
     case "invalid_email":
-      return "Enter a valid email or leave blank.";
+      return t.book.err_email;
     case "phone_invalid_length":
     case "phone_invalid":
-      return "Enter your 8-digit Kuwait phone number.";
+      return t.book.err_phone;
     case "too_long":
-      return `Must be ${NOTES_MAX} characters or fewer.`;
+      return t.book.err_notes_long;
     default:
-      return "Please correct this field.";
+      return t.book.err_field_correct;
   }
 }

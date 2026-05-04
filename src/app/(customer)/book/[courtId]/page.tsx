@@ -23,6 +23,9 @@ import {
   nextNDaysIso,
   BOOKING_WINDOW_DAYS,
 } from "@/lib/time";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Slot, Sport } from "@/lib/types";
 
 const SPORT_ICON: Record<Sport, LucideIcon> = {
@@ -38,6 +41,7 @@ export default function DateSlotPickerPage({
 }: {
   params: { courtId: string };
 }) {
+  const t = useDict();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -55,7 +59,6 @@ export default function DateSlotPickerPage({
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  // Bumped to force a slot/availability refetch (tab return, form 409 redirect).
   const [refetchTick, setRefetchTick] = useState(0);
 
   useEffect(() => {
@@ -72,7 +75,6 @@ export default function DateSlotPickerPage({
     };
   }, []);
 
-  // ?stale=1 marker from the form's 409 redirect: refetch + clean it up.
   useEffect(() => {
     if (sp.get("stale") === "1") {
       setRefetchTick((t) => t + 1);
@@ -85,7 +87,6 @@ export default function DateSlotPickerPage({
     }
   }, [sp, router, params.courtId]);
 
-  // Fetch court (once)
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -97,15 +98,14 @@ export default function DateSlotPickerPage({
         const json = (await res.json()) as { court: Court };
         if (!cancel) setCourt(json.court);
       } catch {
-        if (!cancel) setCourtError("Court not found.");
+        if (!cancel) setCourtError(t.book.court_not_found);
       }
     })();
     return () => {
       cancel = true;
     };
-  }, [params.courtId, refetchTick]);
+  }, [params.courtId, refetchTick, t.book.court_not_found]);
 
-  // Fetch availability summary (once)
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -126,7 +126,6 @@ export default function DateSlotPickerPage({
     };
   }, [params.courtId, refetchTick]);
 
-  // Fetch slots whenever selectedDate changes
   useEffect(() => {
     let cancel = false;
     setSlotsLoading(true);
@@ -181,7 +180,7 @@ export default function DateSlotPickerPage({
         <Card className="text-center text-slate-700">
           <p>{courtError}</p>
           <Link href="/book" className="mt-4 inline-block text-brand underline">
-            Back to courts
+            {t.book.back_to_courts}
           </Link>
         </Card>
       </Container>
@@ -197,7 +196,8 @@ export default function DateSlotPickerPage({
           href="/book"
           className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden /> Back
+          <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />{" "}
+          {t.common.back}
         </Link>
 
         <div className="mt-3 flex items-center gap-3">
@@ -207,14 +207,16 @@ export default function DateSlotPickerPage({
             </span>
           )}
           <h1 className="min-w-0 truncate text-2xl font-bold text-slate-900 md:text-3xl">
-            {court ? court.name : "Loading…"}
+            {court ? court.name : t.common.loading}
           </h1>
         </div>
 
-        {/* Date strip */}
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-700">Pick a date</h2>
+          <h2 className="text-sm font-semibold text-slate-700">
+            {t.book.pick_a_date}
+          </h2>
           <DateStrip
+            t={t}
             days={days}
             today={today}
             selected={selectedDate}
@@ -223,20 +225,22 @@ export default function DateSlotPickerPage({
           />
         </section>
 
-        {/* Slot grid */}
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-700">Pick a time</h2>
+          <h2 className="text-sm font-semibold text-slate-700">
+            {t.book.pick_a_time}
+          </h2>
           <div className="mt-3">
             {slotsLoading ? (
               <SlotsSkeleton />
             ) : (slots?.length ?? 0) === 0 ? (
               <Card className="text-center text-slate-600">
-                No slots available for this day.
+                {t.book.no_slots}
               </Card>
             ) : (
               <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
                 {slots!.map((s) => (
                   <SlotCell
+                    t={t}
                     key={s.id}
                     slot={s}
                     isSelected={s.id === selectedSlotId}
@@ -249,13 +253,12 @@ export default function DateSlotPickerPage({
         </section>
       </Container>
 
-      {/* Sticky bottom bar */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur">
         <Container className="flex items-center justify-between gap-3 py-3">
           <p className="min-w-0 flex-1 text-sm">
             {selectedSlot ? (
               <span className="text-slate-900">
-                Selected:{" "}
+                {t.book.selected_label}{" "}
                 <span className="font-semibold">
                   {formatKuwaitTimeRange(
                     selectedSlot.start_time,
@@ -264,10 +267,11 @@ export default function DateSlotPickerPage({
                 </span>
               </span>
             ) : (
-              <span className="text-slate-500">Pick a time</span>
+              <span className="text-slate-500">{t.book.pick_time_short}</span>
             )}
           </p>
           <ContinueButton
+            t={t}
             disabled={!selectedSlot || !court}
             href={
               selectedSlot && court
@@ -285,12 +289,14 @@ export default function DateSlotPickerPage({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DateStrip({
+  t,
   days,
   today,
   selected,
   counts,
   onPick,
 }: {
+  t: Dict;
   days: string[];
   today: string;
   selected: string;
@@ -299,7 +305,6 @@ function DateStrip({
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Keep the selected chip in view (especially when restoring from URL state).
   useEffect(() => {
     const el = ref.current?.querySelector<HTMLButtonElement>(
       `[data-date="${selected}"]`,
@@ -312,7 +317,7 @@ function DateStrip({
       ref={ref}
       className="mt-3 flex gap-2 overflow-x-auto pb-2"
       role="tablist"
-      aria-label="Select a date"
+      aria-label={t.book.select_date_aria}
     >
       {days.map((d) => {
         const isToday = d === today;
@@ -355,7 +360,7 @@ function DateStrip({
                     : "text-slate-500",
               ].join(" ")}
             >
-              {c ? `${c.open} open` : ""}
+              {c ? format(t.book.open_count, { n: c.open }) : ""}
             </span>
           </button>
         );
@@ -365,10 +370,12 @@ function DateStrip({
 }
 
 function SlotCell({
+  t,
   slot,
   isSelected,
   onSelect,
 }: {
+  t: Dict;
   slot: Slot;
   isSelected: boolean;
   onSelect: () => void;
@@ -381,13 +388,13 @@ function SlotCell({
     return (
       <span
         role="img"
-        title="Already booked — pick another time"
-        aria-label={`${time} already booked`}
+        title={t.book.booked_title}
+        aria-label={format(t.book.booked_aria, { time })}
         className={`${baseCls} cursor-not-allowed border border-slate-300 bg-slate-200 text-slate-500 line-through`}
       >
-        <span>{time}</span>
+        <span dir="ltr">{time}</span>
         <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 no-underline">
-          Booked
+          {t.book.booked}
         </span>
       </span>
     );
@@ -396,13 +403,13 @@ function SlotCell({
     return (
       <span
         role="img"
-        title="This slot is closed"
-        aria-label={`${time} closed`}
+        title={t.book.closed_title}
+        aria-label={format(t.book.closed_aria, { time })}
         className={`${baseCls} cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400`}
       >
         <span>—</span>
         <span className="text-[10px] font-medium uppercase tracking-wider">
-          Closed
+          {t.book.closed}
         </span>
       </span>
     );
@@ -418,7 +425,7 @@ function SlotCell({
           : `${baseCls} border border-brand bg-white text-brand hover:bg-brand/5 active:bg-brand/10`
       }
     >
-      <span>{time}</span>
+      <span dir="ltr">{time}</span>
     </button>
   );
 }
@@ -437,10 +444,12 @@ function SlotsSkeleton() {
 }
 
 function ContinueButton({
+  t,
   disabled,
   href,
   price,
 }: {
+  t: Dict;
   disabled: boolean;
   href: string;
   price: string;
@@ -450,7 +459,7 @@ function ContinueButton({
   if (disabled) {
     return (
       <span className={`${cls} cursor-not-allowed bg-slate-200 text-slate-500`}>
-        Continue
+        {t.book.continue}
       </span>
     );
   }
@@ -459,7 +468,7 @@ function ContinueButton({
       href={href}
       className={`${cls} bg-accent text-white shadow-md hover:bg-accent-dark active:bg-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2`}
     >
-      Continue · {price}
+      {t.book.continue} · {price}
     </Link>
   );
 }
