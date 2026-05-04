@@ -1,4 +1,5 @@
 import { Hero } from "@/components/landing/Hero";
+import { StatsStrip } from "@/components/landing/StatsStrip";
 import { WhySmash } from "@/components/landing/WhySmash";
 import { OurCourts } from "@/components/landing/OurCourts";
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -9,6 +10,7 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <StatsStrip />
       <RevealOnScroll>
         <WhySmash />
       </RevealOnScroll>
