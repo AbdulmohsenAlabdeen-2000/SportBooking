@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
+import { ImagePlus, Loader2, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { useDict } from "@/lib/i18n/client";
 import { format } from "@/lib/i18n/shared";
 import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Sport } from "@/lib/types";
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export type CourtFormProps = {
   open: boolean;
@@ -44,9 +53,57 @@ export function CourtForm({
   const [duration, setDuration] = useState("60");
   const [isActive, setIsActive] = useState(true);
   const [imageUrl, setImageUrl] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
+
+  async function handleImageFile(file: File) {
+    setImageUploadError(null);
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setImageUploadError(t.admin.court_form_err_invalid_image_type);
+      return;
+    }
+    if (file.size === 0) {
+      setImageUploadError(t.admin.court_form_err_image_empty);
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageUploadError(t.admin.court_form_err_image_too_large);
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/courts/upload-image", {
+        method: "POST",
+        body,
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
+      if (res.status === 201 && json.url) {
+        setImageUrl(json.url);
+        return;
+      }
+      if (res.status === 415) {
+        setImageUploadError(t.admin.court_form_err_invalid_image_type);
+      } else if (res.status === 413) {
+        setImageUploadError(t.admin.court_form_err_image_too_large);
+      } else if (json.error === "bucket_missing") {
+        setImageUploadError(t.admin.court_form_err_bucket_missing);
+      } else {
+        setImageUploadError(t.admin.court_form_err_image_upload);
+      }
+    } catch {
+      setImageUploadError(t.common.network_error);
+    } finally {
+      setImageUploading(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +118,8 @@ export function CourtForm({
     setDuration(String(initial?.slot_duration_minutes ?? 60));
     setIsActive(initial?.is_active ?? true);
     setImageUrl(initial?.image_url ?? "");
+    setImageUploadError(null);
+    setImageUploading(false);
     dialogRef.current?.focus();
   }, [open, initial]);
 
@@ -250,29 +309,17 @@ export function CourtForm({
           </Field>
 
           <Field label={t.admin.court_form_image} error={errors.image_url}>
-            <input
-              type="url"
-              inputMode="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/court.jpg"
-              className={inputCls(!!errors.image_url)}
-              dir="ltr"
+            <ImageUploader
+              t={t}
+              imageUrl={imageUrl}
+              uploading={imageUploading}
+              uploadError={imageUploadError}
+              onPick={(file) => void handleImageFile(file)}
+              onRemove={() => {
+                setImageUrl("");
+                setImageUploadError(null);
+              }}
             />
-            {imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt=""
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-                onLoad={(e) => {
-                  (e.target as HTMLImageElement).style.display = "block";
-                }}
-                className="mt-2 h-32 w-full rounded-xl object-cover"
-              />
-            ) : null}
           </Field>
 
           <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -342,6 +389,138 @@ function inputCls(hasError: boolean) {
       ? "border-red-500 focus:ring-red-500"
       : "border-slate-300 focus:ring-slate-500",
   ].join(" ");
+}
+
+function ImageUploader({
+  t,
+  imageUrl,
+  uploading,
+  uploadError,
+  onPick,
+  onRemove,
+}: {
+  t: Dict;
+  imageUrl: string;
+  uploading: boolean;
+  uploadError: string | null;
+  onPick: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  function pickFromInput() {
+    fileInputRef.current?.click();
+  }
+
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    if (uploading) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) onPick(file);
+  }
+
+  return (
+    <div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onPick(file);
+          // Reset so picking the same filename twice still fires onChange.
+          e.target.value = "";
+        }}
+      />
+
+      {imageUrl ? (
+        <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-40 w-full object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-gradient-to-t from-slate-900/70 to-transparent p-2">
+            <button
+              type="button"
+              onClick={pickFromInput}
+              disabled={uploading}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/95 px-3 text-xs font-medium text-slate-800 shadow-sm hover:bg-white disabled:opacity-60"
+            >
+              {uploading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {uploading ? t.admin.court_form_image_uploading : t.admin.court_form_image_replace}
+            </button>
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={uploading}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-red-600/90 px-3 text-xs font-medium text-white shadow-sm hover:bg-red-600 disabled:opacity-60"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              {t.admin.court_form_image_remove}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!uploading) setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          className={[
+            "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors",
+            dragOver
+              ? "border-brand bg-brand/5"
+              : "border-slate-300 bg-slate-50 hover:bg-slate-100",
+            uploading ? "pointer-events-none opacity-70" : "",
+          ].join(" ")}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
+            {uploading ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            ) : (
+              <UploadCloud className="h-5 w-5" aria-hidden />
+            )}
+          </span>
+          <p className="text-sm font-medium text-slate-700">
+            {uploading ? t.admin.court_form_image_uploading : t.admin.court_form_image_drop}
+          </p>
+          {!uploading && (
+            <>
+              <p className="text-xs text-slate-500">
+                {t.admin.court_form_image_or}
+              </p>
+              <button
+                type="button"
+                onClick={pickFromInput}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              >
+                <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+                {t.admin.court_form_image_browse}
+              </button>
+              <p className="text-[11px] text-slate-400">
+                {t.admin.court_form_image_hint}
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {uploadError ? (
+        <p className="mt-2 text-sm text-red-600">{uploadError}</p>
+      ) : null}
+    </div>
+  );
 }
 
 function humanize(code: string, t: Dict): string {
