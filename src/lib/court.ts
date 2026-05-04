@@ -8,6 +8,7 @@ export type CourtInput = {
   price_per_slot: number;
   slot_duration_minutes: number;
   is_active: boolean;
+  image_url: string | null;
 };
 
 export type ValidationFailure = { field: string; error: string };
@@ -15,6 +16,7 @@ export type ValidationFailure = { field: string; error: string };
 const NAME_MIN = 2;
 const NAME_MAX = 80;
 const DESC_MAX = 500;
+const URL_MAX = 1000;
 const SPORTS: ReadonlyArray<Sport> = ["padel", "tennis", "football"];
 const ALLOWED_DURATIONS = [30, 45, 60, 90, 120] as const;
 
@@ -26,6 +28,7 @@ type RawInput = Partial<{
   price_per_slot: unknown;
   slot_duration_minutes: unknown;
   is_active: unknown;
+  image_url: unknown;
 }>;
 
 export function validateCourtInput(
@@ -112,6 +115,28 @@ export function validateCourtInput(
     } else value.is_active = body.is_active;
   } else if (!partial) {
     value.is_active = true;
+  }
+
+  if (body.image_url !== undefined) {
+    if (body.image_url === null || body.image_url === "") {
+      value.image_url = null;
+    } else if (typeof body.image_url !== "string") {
+      failures.push({ field: "image_url", error: "invalid_type" });
+    } else if (body.image_url.length > URL_MAX) {
+      failures.push({ field: "image_url", error: "too_long" });
+    } else {
+      const url = body.image_url.trim();
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          failures.push({ field: "image_url", error: "invalid_url" });
+        } else {
+          value.image_url = url;
+        }
+      } catch {
+        failures.push({ field: "image_url", error: "invalid_url" });
+      }
+    }
   }
 
   if (failures.length > 0) return { ok: false, failures };

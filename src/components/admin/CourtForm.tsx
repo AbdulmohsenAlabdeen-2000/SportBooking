@@ -33,6 +33,7 @@ export function CourtForm({
   const [price, setPrice] = useState("8.000");
   const [duration, setDuration] = useState("60");
   const [isActive, setIsActive] = useState(true);
+  const [imageUrl, setImageUrl] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export function CourtForm({
     setPrice(String(initial?.price_per_slot ?? "8.000"));
     setDuration(String(initial?.slot_duration_minutes ?? 60));
     setIsActive(initial?.is_active ?? true);
+    setImageUrl(initial?.image_url ?? "");
     dialogRef.current?.focus();
   }, [open, initial]);
 
@@ -85,6 +87,7 @@ export function CourtForm({
       price_per_slot: Number(price),
       slot_duration_minutes: Number(duration),
       is_active: isActive,
+      image_url: imageUrl.trim() || null,
     };
 
     try {
@@ -236,6 +239,31 @@ export function CourtForm({
             />
           </Field>
 
+          <Field label="Photo URL (optional)" error={errors.image_url}>
+            <input
+              type="url"
+              inputMode="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/court.jpg"
+              className={inputCls(!!errors.image_url)}
+            />
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageUrl}
+                alt=""
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+                onLoad={(e) => {
+                  (e.target as HTMLImageElement).style.display = "block";
+                }}
+                className="mt-2 h-32 w-full rounded-xl object-cover"
+              />
+            ) : null}
+          </Field>
+
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -318,8 +346,10 @@ function humanize(code: string): string {
       return "Price must be a non-negative number.";
     case "invalid_duration":
       return "Pick a supported slot duration.";
+    case "invalid_url":
+      return "Photo URL must start with http:// or https://";
     case "too_long":
-      return "Description must be 500 characters or fewer.";
+      return "Too long.";
     default:
       return "Please correct this field.";
   }

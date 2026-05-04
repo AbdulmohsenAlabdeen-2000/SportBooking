@@ -64,6 +64,7 @@ export async function POST(req: Request) {
       price_per_slot: input.price_per_slot,
       slot_duration_minutes: input.slot_duration_minutes,
       is_active: input.is_active,
+      image_url: input.image_url ?? null,
     })
     .select()
     .maybeSingle();

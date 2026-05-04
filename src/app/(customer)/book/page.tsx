@@ -84,9 +84,20 @@ export default async function CourtPickerPage({
                   aria-label={`Pick ${court.name}`}
                 >
                   <Card className="flex items-center gap-4 transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand">
-                    <div className="flex h-16 w-16 flex-none items-center justify-center rounded-xl bg-brand/10 text-brand">
-                      <Icon className="h-8 w-8" aria-hidden />
-                    </div>
+                    {court.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={court.image_url}
+                        alt={court.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-16 w-16 flex-none rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 flex-none items-center justify-center rounded-xl bg-brand/10 text-brand">
+                        <Icon className="h-8 w-8" aria-hidden />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold uppercase tracking-wider text-brand">
                         {SPORT_LABEL[court.sport]}

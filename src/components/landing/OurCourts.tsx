@@ -49,10 +49,21 @@ function CourtCard({ court }: { court: Court }) {
       href={`/book?court=${court.id}`}
       className="group block focus:outline-none"
     >
-      <Card className="flex h-full flex-col gap-4 transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-brand group-active:translate-y-0 group-active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none">
-        <div className="flex h-32 items-center justify-center rounded-xl bg-brand/10 text-brand transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none">
-          <Icon className="h-12 w-12" aria-hidden />
-        </div>
+      <Card className="flex h-full flex-col gap-4 overflow-hidden transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-brand group-active:translate-y-0 group-active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none">
+        {court.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={court.image_url}
+            alt={`${court.name}`}
+            loading="lazy"
+            decoding="async"
+            className="h-32 w-full rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none"
+          />
+        ) : (
+          <div className="flex h-32 items-center justify-center rounded-xl bg-brand/10 text-brand transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none">
+            <Icon className="h-12 w-12" aria-hidden />
+          </div>
+        )}
         <div className="flex flex-1 flex-col">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand">
             {SPORT_LABEL[court.sport]}
