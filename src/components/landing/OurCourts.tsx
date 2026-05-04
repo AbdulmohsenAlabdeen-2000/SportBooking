@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import { Activity, CircleDot, LandPlot } from "lucide-react";
+import { Activity, CircleDot, LandPlot, Star } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import type { Court, Sport } from "@/lib/types";
@@ -34,6 +34,22 @@ async function fetchCourts(): Promise<Court[]> {
   return json.courts;
 }
 
+type ReviewSummary = { count: number; average: number | null };
+
+async function fetchReviewSummary(courtId: string): Promise<ReviewSummary> {
+  try {
+    const res = await fetch(
+      `${getBaseUrl()}/api/courts/${courtId}/reviews`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return { count: 0, average: null };
+    const json = (await res.json()) as { summary: ReviewSummary };
+    return json.summary;
+  } catch {
+    return { count: 0, average: null };
+  }
+}
+
 function formatPriceKwd(price: number): string {
   return `${price.toFixed(3)} KWD`;
 }
@@ -42,7 +58,13 @@ function CapacityLabel({ capacity }: { capacity: number }) {
   return <span>Up to {capacity} players</span>;
 }
 
-function CourtCard({ court }: { court: Court }) {
+function CourtCard({
+  court,
+  review,
+}: {
+  court: Court;
+  review: ReviewSummary;
+}) {
   const Icon = SPORT_ICON[court.sport];
   return (
     <Link
@@ -65,9 +87,28 @@ function CourtCard({ court }: { court: Court }) {
           </div>
         )}
         <div className="flex flex-1 flex-col">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-            {SPORT_LABEL[court.sport]}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand">
+              {SPORT_LABEL[court.sport]}
+            </p>
+            {review.average !== null ? (
+              <span
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-700"
+                title={`${review.count} review${review.count === 1 ? "" : "s"}`}
+              >
+                <Star
+                  className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                  aria-hidden
+                />
+                {review.average.toFixed(1)}
+                <span className="text-slate-400">({review.count})</span>
+              </span>
+            ) : (
+              <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                New
+              </span>
+            )}
+          </div>
           <h3 className="mt-1 text-lg font-semibold text-slate-900">
             {court.name}
           </h3>
@@ -120,10 +161,16 @@ async function CourtsList() {
 
   if (courts.length === 0) return <CourtsFallback />;
 
+  // Fetch all review summaries in parallel; one failure leaves a court
+  // with the "New" badge instead of breaking the whole list.
+  const reviews = await Promise.all(
+    courts.map((c) => fetchReviewSummary(c.id)),
+  );
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {courts.map((court) => (
-        <CourtCard key={court.id} court={court} />
+      {courts.map((court, i) => (
+        <CourtCard key={court.id} court={court} review={reviews[i]} />
       ))}
     </div>
   );

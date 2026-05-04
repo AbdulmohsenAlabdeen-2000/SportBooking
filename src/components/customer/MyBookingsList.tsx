@@ -9,12 +9,14 @@ import {
   CircleDot,
   LandPlot,
   Loader2,
+  Star,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
+import { ReviewModal } from "@/components/customer/ReviewModal";
 import {
   formatKuwaitFullDate,
   formatKuwaitTimeRange,
@@ -23,11 +25,13 @@ import {
 import type { BookingStatus, Sport } from "@/lib/types";
 
 type CustomerBooking = {
+  id: string;
   reference: string;
   status: BookingStatus;
   total_price: number;
   court: { id: string; name: string; sport: Sport } | null;
   slot: { start_time: string; end_time: string } | null;
+  review: { rating: number; comment: string | null } | null;
 };
 
 const SPORT_ICON: Record<Sport, LucideIcon> = {
@@ -47,6 +51,7 @@ export function MyBookingsList({
     null,
   );
   const [busy, setBusy] = useState(false);
+  const [reviewOf, setReviewOf] = useState<CustomerBooking | null>(null);
 
   async function cancel(b: CustomerBooking) {
     if (busy) return;
@@ -142,11 +147,23 @@ export function MyBookingsList({
                 booking={b}
                 cancellable={b.status === "confirmed"}
                 onCancel={() => setConfirmCancel(b)}
+                onReview={() => setReviewOf(b)}
               />
             ))}
           </ul>
         </section>
       )}
+
+      <ReviewModal
+        open={reviewOf !== null}
+        bookingId={reviewOf?.id ?? null}
+        courtName={reviewOf?.court?.name ?? null}
+        onClose={() => setReviewOf(null)}
+        onSubmitted={() => {
+          setReviewOf(null);
+          router.refresh();
+        }}
+      />
 
       <ConfirmModal
         open={confirmCancel !== null}
@@ -171,12 +188,24 @@ function BookingCard({
   booking,
   cancellable,
   onCancel,
+  onReview,
 }: {
   booking: CustomerBooking;
   cancellable: boolean;
   onCancel?: () => void;
+  onReview?: () => void;
 }) {
   const SportIcon = booking.court ? SPORT_ICON[booking.court.sport] : null;
+
+  // A booking is reviewable only after it has actually started, isn't
+  // cancelled, and hasn't already been reviewed.
+  const now = Date.now();
+  const reviewable =
+    !!booking.slot &&
+    new Date(booking.slot.start_time).getTime() <= now &&
+    booking.status !== "cancelled" &&
+    booking.review === null;
+
   return (
     <li>
       <Card>
@@ -195,7 +224,7 @@ function BookingCard({
                 ? `${formatKuwaitFullDate(booking.slot.start_time.slice(0, 10))} · ${formatKuwaitTimeRange(booking.slot.start_time, booking.slot.end_time)}`
                 : "—"}
             </p>
-            <div className="mt-1 flex items-center gap-2 text-xs">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
               <StatusPill status={booking.status} />
               <span className="font-mono text-[11px] text-slate-500">
                 {booking.reference}
@@ -204,20 +233,47 @@ function BookingCard({
               <span className="font-medium text-slate-900">
                 {formatKwd(booking.total_price)}
               </span>
+              {booking.review ? (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700 ring-1 ring-amber-200">
+                  {Array.from({ length: booking.review.rating }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className="h-3 w-3 fill-amber-500 text-amber-500"
+                      aria-hidden
+                    />
+                  ))}
+                </span>
+              ) : null}
             </div>
+            {booking.review?.comment ? (
+              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs italic text-slate-600">
+                &ldquo;{booking.review.comment}&rdquo;
+              </p>
+            ) : null}
           </div>
         </div>
-        {cancellable ? (
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
-            >
-              <XCircle className="h-4 w-4" aria-hidden /> Cancel booking
-            </button>
+        {(cancellable || reviewable) && (
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            {reviewable ? (
+              <button
+                type="button"
+                onClick={onReview}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-sm font-medium text-amber-800 hover:bg-amber-50"
+              >
+                <Star className="h-4 w-4" aria-hidden /> Leave a review
+              </button>
+            ) : null}
+            {cancellable ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              >
+                <XCircle className="h-4 w-4" aria-hidden /> Cancel booking
+              </button>
+            ) : null}
           </div>
-        ) : null}
+        )}
       </Card>
     </li>
   );

@@ -17,11 +17,13 @@ export const metadata = {
 };
 
 type Row = {
+  id: string;
   reference: string;
   status: BookingStatus;
   total_price: number | string;
   court: { id: string; name: string; sport: Sport } | { id: string; name: string; sport: Sport }[] | null;
   slot: { start_time: string; end_time: string } | { start_time: string; end_time: string }[] | null;
+  reviews: { rating: number; comment: string | null } | { rating: number; comment: string | null }[] | null;
 };
 
 async function loadMyBookings(userId: string) {
@@ -30,11 +32,13 @@ async function loadMyBookings(userId: string) {
     .from("bookings")
     .select(
       `
+      id,
       reference,
       status,
       total_price,
       court:courts(id, name, sport),
-      slot:slots(start_time, end_time)
+      slot:slots(start_time, end_time),
+      reviews(rating, comment)
     `,
     )
     .eq("user_id", userId)
@@ -44,12 +48,19 @@ async function loadMyBookings(userId: string) {
   return rows.map((r) => {
     const court = Array.isArray(r.court) ? r.court[0] : r.court;
     const slot = Array.isArray(r.slot) ? r.slot[0] : r.slot;
+    const review = Array.isArray(r.reviews)
+      ? (r.reviews[0] ?? null)
+      : r.reviews;
     return {
+      id: r.id,
       reference: r.reference,
       status: r.status,
       total_price: Number(r.total_price),
       court: court ? { id: court.id, name: court.name, sport: court.sport } : null,
       slot: slot ? { start_time: slot.start_time, end_time: slot.end_time } : null,
+      review: review
+        ? { rating: review.rating, comment: review.comment }
+        : null,
     };
   });
 }
