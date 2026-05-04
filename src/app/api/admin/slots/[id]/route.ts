@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError, isUuid } from "@/lib/api";
+import { isDemoMode } from "@/lib/demo/mode";
+import { setSlotStatus as demoSetSlot } from "@/lib/demo/store";
 import type { SlotStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,15 @@ export async function PATCH(
     return jsonError("invalid_status", 400);
   }
   const target: SlotStatus = body.status;
+
+  if (isDemoMode()) {
+    const result = demoSetSlot(params.id, target);
+    if (!result.ok) {
+      const status = result.error === "slot_not_found" ? 404 : 409;
+      return jsonError(result.error, status);
+    }
+    return NextResponse.json({ slot: result.slot });
+  }
 
   const supabase = createServerClient();
 

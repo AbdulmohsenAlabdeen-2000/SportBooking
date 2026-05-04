@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError, isUuid } from "@/lib/api";
 import { isValidIsoDate, kuwaitDateToUtcRange } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import {
+  getCourtById as demoGetCourt,
+  listAllBookingsInRange as demoBookingsInRange,
+  listSlotsInRange as demoSlotsInRange,
+} from "@/lib/demo/store";
 import type { SlotStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +48,29 @@ export async function GET(req: Request) {
 
   const startUtc = kuwaitDateToUtcRange(from).startUtc;
   const endUtc = kuwaitDateToUtcRange(to).endUtc;
+
+  if (isDemoMode()) {
+    if (!demoGetCourt(courtId)) return jsonError("court_not_found", 404);
+    const slots = demoSlotsInRange(courtId, startUtc, endUtc);
+    const bookings = demoBookingsInRange(startUtc, endUtc);
+    const bookingBySlot = new Map(bookings.filter((b) => b.status !== "cancelled").map((b) => [b.slot_id, b]));
+    return NextResponse.json({
+      slots: slots.map((s) => {
+        const b = bookingBySlot.get(s.id);
+        return {
+          id: s.id,
+          court_id: s.court_id,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          status: s.status,
+          booking:
+            s.status === "booked" && b
+              ? { reference: b.reference, customer_name: b.customer_name }
+              : null,
+        };
+      }),
+    });
+  }
 
   const supabase = createServerClient();
   const { data, error } = await supabase

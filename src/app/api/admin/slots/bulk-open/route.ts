@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError, isUuid } from "@/lib/api";
 import { isValidIsoDate, kuwaitDateToUtcRange } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import { bulkSetSlotsForDay as demoBulk } from "@/lib/demo/store";
 import type { SlotStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +24,12 @@ export async function POST(req: Request) {
   if (!isValidIsoDate(date)) return jsonError("invalid_date", 400);
 
   const { startUtc, endUtc } = kuwaitDateToUtcRange(date);
+
+  if (isDemoMode()) {
+    const result = demoBulk(courtId, startUtc, endUtc, "closed", "open");
+    return NextResponse.json({ opened: result.changed, skipped: result.skipped });
+  }
+
   const supabase = createServerClient();
 
   const { data: slots, error: fetchErr } = await supabase

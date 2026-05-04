@@ -7,6 +7,8 @@ import {
   kuwaitTodayIso,
   nextNDaysIso,
 } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import { ensureSlotsForWindow as demoEnsure } from "@/lib/demo/store";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,15 @@ function kuwaitDateAtHourToUtcIso(dateIso: string, hour: number): string {
 }
 
 export async function POST() {
+  if (isDemoMode()) {
+    const { inserted } = demoEnsure();
+    return NextResponse.json({
+      inserted,
+      days: BOOKING_WINDOW_DAYS,
+      todayKuwait: kuwaitTodayIso(),
+    });
+  }
+
   const supabase = createServerClient();
 
   const { data: courts, error: courtsErr } = await supabase
