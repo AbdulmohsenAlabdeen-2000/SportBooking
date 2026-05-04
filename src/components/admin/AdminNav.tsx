@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, LayoutDashboard, ClipboardList } from "lucide-react";
+import {
+  Calendar,
+  LayoutDashboard,
+  ClipboardList,
+  LandPlot,
+} from "lucide-react";
 
 type LinkSpec = {
   href: string;
@@ -15,6 +20,7 @@ const LINKS: LinkSpec[] = [
   { href: "/admin", label: "Dashboard", Icon: LayoutDashboard, exact: true },
   { href: "/admin/bookings", label: "Bookings", Icon: ClipboardList },
   { href: "/admin/slots", label: "Slots", Icon: Calendar },
+  { href: "/admin/courts", label: "Courts", Icon: LandPlot },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
@@ -58,7 +64,7 @@ export function AdminBottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-slate-200 bg-white md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white md:hidden"
       aria-label="Admin navigation"
     >
       {LINKS.map(({ href, label, Icon, exact }) => {
