@@ -73,6 +73,10 @@ function LoginForm() {
         return;
       }
       router.replace(next.startsWith("/admin") ? next : "/admin");
+      // Force the server layout to re-run requireAdmin() with the freshly
+      // set cookies — without this, the just-written session can race the
+      // navigation and the middleware bounces back here.
+      router.refresh();
     } catch {
       setError("Couldn't reach the auth server. Try again.");
       setSubmitting(false);
