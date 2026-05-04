@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import { createCookieClient } from "@/lib/supabase/route";
 import { jsonError } from "@/lib/api";
@@ -11,6 +12,12 @@ import {
   getCourtById as demoGetCourtById,
   getSlotById as demoGetSlotById,
 } from "@/lib/demo/store";
+import { sendBookingConfirmationSms } from "@/lib/sms/booking-confirmation";
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  isSupportedLocale,
+} from "@/lib/i18n/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +58,9 @@ export async function POST(req: Request) {
   }
   const input = parsed.value;
 
+  const cookieLocale = cookies().get(LOCALE_COOKIE)?.value;
+  const locale = isSupportedLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+
   if (isDemoMode()) {
     const result = demoCreateBooking({
       slot_id: input.slot_id,
@@ -70,6 +80,17 @@ export async function POST(req: Request) {
     }
     const slot = demoGetSlotById(result.booking.slot_id);
     const court = demoGetCourtById(result.booking.court_id);
+    if (slot && court) {
+      await sendBookingConfirmationSms({
+        rawPhone: result.booking.customer_phone,
+        customerName: result.booking.customer_name,
+        courtName: court.name,
+        startIso: slot.start_time,
+        endIso: slot.end_time,
+        reference: result.booking.reference,
+        locale,
+      });
+    }
     return NextResponse.json(
       {
         booking: {
@@ -149,6 +170,16 @@ export async function POST(req: Request) {
         // Don't fail the booking if the user_id link errors — the row is
         // already in place; admin can backfill if needed.
       }
+
+      await sendBookingConfirmationSms({
+        rawPhone: row.customer_phone,
+        customerName: row.customer_name,
+        courtName: court.name,
+        startIso: slot.start_time,
+        endIso: slot.end_time,
+        reference: row.reference,
+        locale,
+      });
 
       return NextResponse.json(
         {

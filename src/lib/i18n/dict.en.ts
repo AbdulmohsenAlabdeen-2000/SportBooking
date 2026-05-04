@@ -538,6 +538,10 @@ export const en = {
     book_a_court: "Book a court",
     home: "Home",
   },
+  sms: {
+    booking_confirmation:
+      "Smash Courts Kuwait: Hi {name}, your {court} booking on {date} at {time} is confirmed. Ref: {ref}. See you 10 min before — park at the back gate.",
+  },
 };
 
 export type Dict = typeof en;
