@@ -17,13 +17,6 @@ type Stat = {
   Icon: LucideIcon;
 };
 
-const STATS: Stat[] = [
-  { value: 4, label: "Pro courts", Icon: LandPlot },
-  { value: 14, suffix: "d", label: "Booking window", Icon: CalendarRange },
-  { value: 15, suffix: "h", label: "Open per day", Icon: Clock },
-  { value: 60, suffix: "s", label: "Average booking", Icon: Calendar },
-];
-
 // Counts up from 0 to `target` once the strip enters the viewport.
 // Skips the animation when prefers-reduced-motion is set (returns the
 // final value immediately).
@@ -92,12 +85,21 @@ function StatTile({ stat }: { stat: Stat }) {
   );
 }
 
-export function StatsStrip() {
+export function StatsStrip({ courtCount }: { courtCount: number }) {
+  // Live court count comes from the page (Server Component); the rest
+  // are constants of the booking model that don't change at runtime.
+  const stats: Stat[] = [
+    { value: courtCount, label: "Pro courts", Icon: LandPlot },
+    { value: 14, suffix: "d", label: "Booking window", Icon: CalendarRange },
+    { value: 15, suffix: "h", label: "Open per day", Icon: Clock },
+    { value: 60, suffix: "s", label: "Average booking", Icon: Calendar },
+  ];
+
   return (
     <section className="border-b border-slate-200 bg-white py-12 md:py-16">
       <Container>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <StatTile key={s.label} stat={s} />
           ))}
         </div>

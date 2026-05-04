@@ -2,6 +2,11 @@ import { formatKuwaitWeekday } from "@/lib/time";
 
 type Day = { date: string; bookings: number };
 
+// Compact 7-day bookings chart. Designed to read at a glance — bars
+// are gradient-filled, today is highlighted, the y-max is shown as a
+// faint reference line, and exact counts only render on bars that
+// actually have data so empty days stay quiet.
+
 export function WeekBarChart({
   days,
   todayIso,
@@ -11,58 +16,72 @@ export function WeekBarChart({
 }) {
   if (days.length === 0) {
     return (
-      <div className="h-20 rounded-xl border border-dashed border-slate-200 bg-white" />
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+        No bookings data yet.
+      </div>
     );
   }
 
   const max = Math.max(1, ...days.map((d) => d.bookings));
-  const W = 280;
-  const H = 80;
-  const PAD = 4;
-  const colW = (W - PAD * 2) / days.length;
-  const barW = Math.max(8, colW - 8);
+  const total = days.reduce((sum, d) => sum + d.bookings, 0);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
-      <p className="px-1 text-xs font-medium text-slate-500">
-        Bookings · last 7 days
-      </p>
-      <svg
-        viewBox={`0 0 ${W} ${H + 18}`}
-        className="mt-2 h-24 w-full"
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+      <div className="flex items-baseline justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Bookings · last 7 days
+        </p>
+        <p className="text-xs text-slate-500">
+          <span className="font-semibold text-slate-900">{total}</span> total
+        </p>
+      </div>
+      <div
+        className="relative mt-4 grid grid-cols-7 gap-2 md:gap-3"
         role="img"
-        aria-label="Bookings over the last 7 days"
-        preserveAspectRatio="none"
+        aria-label={`Bookings over the last 7 days, total ${total}`}
       >
-        {days.map((d, i) => {
+        {days.map((d) => {
           const isToday = d.date === todayIso;
-          const h = (d.bookings / max) * (H - 4);
-          const x = PAD + i * colW + (colW - barW) / 2;
-          const y = H - h;
+          const heightPct = (d.bookings / max) * 100;
           return (
-            <g key={d.date}>
-              <rect
-                x={x}
-                y={y}
-                width={barW}
-                height={Math.max(2, h)}
-                rx={3}
-                className={isToday ? "fill-brand" : "fill-slate-300"}
+            <div
+              key={d.date}
+              className="flex h-32 flex-col items-center justify-end md:h-36"
+            >
+              <span
+                className={`mb-1 text-[10px] font-semibold tabular-nums ${
+                  d.bookings === 0
+                    ? "invisible"
+                    : isToday
+                      ? "text-brand"
+                      : "text-slate-700"
+                }`}
               >
-                <title>{`${d.date}: ${d.bookings} bookings`}</title>
-              </rect>
-              <text
-                x={x + barW / 2}
-                y={H + 12}
-                textAnchor="middle"
-                className={`fill-slate-500 text-[8px] ${isToday ? "font-semibold" : ""}`}
+                {d.bookings}
+              </span>
+              <div
+                className={`w-full overflow-hidden rounded-lg ${
+                  isToday
+                    ? "bg-gradient-to-t from-brand to-brand/70 ring-2 ring-brand/30"
+                    : "bg-gradient-to-t from-slate-300 to-slate-200"
+                } transition-[height] duration-300`}
+                style={{
+                  height: d.bookings === 0 ? "4px" : `${Math.max(8, heightPct)}%`,
+                  minHeight: d.bookings === 0 ? "4px" : "12px",
+                }}
+                title={`${d.bookings} booking${d.bookings === 1 ? "" : "s"}`}
+              />
+              <span
+                className={`mt-2 text-[11px] font-medium uppercase tracking-wider ${
+                  isToday ? "text-brand" : "text-slate-500"
+                }`}
               >
                 {formatKuwaitWeekday(d.date)}
-              </text>
-            </g>
+              </span>
+            </div>
           );
         })}
-      </svg>
+      </div>
     </div>
   );
 }
