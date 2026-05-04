@@ -115,6 +115,13 @@ export default function BookingDetailsPage({
     return `/book/${params.courtId}${qs.toString() ? `?${qs.toString()}` : ""}`;
   }, [date, params.courtId]);
 
+  const backToStep2Stale = useMemo(() => {
+    const qs = new URLSearchParams();
+    if (date) qs.set("date", date);
+    qs.set("stale", "1");
+    return `/book/${params.courtId}?${qs.toString()}`;
+  }, [date, params.courtId]);
+
   function validate(): Record<string, string> {
     const e: Record<string, string> = {};
     const trimmedName = name.trim();
@@ -175,7 +182,7 @@ export default function BookingDetailsPage({
           "That slot was just booked by someone else. Pick another time.",
           "error",
         );
-        router.push(backToStep2);
+        router.push(backToStep2Stale);
         return;
       }
 

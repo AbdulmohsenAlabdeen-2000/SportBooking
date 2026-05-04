@@ -55,6 +55,35 @@ export default function DateSlotPickerPage({
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  // Bumped to force a slot/availability refetch (tab return, form 409 redirect).
+  const [refetchTick, setRefetchTick] = useState(0);
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        setRefetchTick((t) => t + 1);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, []);
+
+  // ?stale=1 marker from the form's 409 redirect: refetch + clean it up.
+  useEffect(() => {
+    if (sp.get("stale") === "1") {
+      setRefetchTick((t) => t + 1);
+      const next = new URLSearchParams(sp.toString());
+      next.delete("stale");
+      router.replace(
+        `/book/${params.courtId}${next.toString() ? `?${next.toString()}` : ""}`,
+        { scroll: false },
+      );
+    }
+  }, [sp, router, params.courtId]);
 
   // Fetch court (once)
   useEffect(() => {
@@ -74,7 +103,7 @@ export default function DateSlotPickerPage({
     return () => {
       cancel = true;
     };
-  }, [params.courtId]);
+  }, [params.courtId, refetchTick]);
 
   // Fetch availability summary (once)
   useEffect(() => {
@@ -95,7 +124,7 @@ export default function DateSlotPickerPage({
     return () => {
       cancel = true;
     };
-  }, [params.courtId]);
+  }, [params.courtId, refetchTick]);
 
   // Fetch slots whenever selectedDate changes
   useEffect(() => {
@@ -120,7 +149,7 @@ export default function DateSlotPickerPage({
     return () => {
       cancel = true;
     };
-  }, [params.courtId, selectedDate]);
+  }, [params.courtId, selectedDate, refetchTick]);
 
   const setDate = useCallback(
     (date: string) => {
@@ -346,25 +375,35 @@ function SlotCell({
 }) {
   const time = formatKuwaitClock(slot.start_time);
   const baseCls =
-    "flex min-h-[56px] items-center justify-center rounded-xl text-base font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand";
+    "flex min-h-[56px] flex-col items-center justify-center rounded-xl text-base font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand";
 
   if (slot.status === "booked") {
     return (
       <span
-        className={`${baseCls} cursor-not-allowed bg-slate-100 text-slate-400 line-through`}
-        aria-label={`${time} booked`}
+        role="img"
+        title="Already booked — pick another time"
+        aria-label={`${time} already booked`}
+        className={`${baseCls} cursor-not-allowed border border-slate-300 bg-slate-200 text-slate-500 line-through`}
       >
-        {time}
+        <span>{time}</span>
+        <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 no-underline">
+          Booked
+        </span>
       </span>
     );
   }
   if (slot.status === "closed") {
     return (
       <span
-        className={`${baseCls} cursor-not-allowed bg-slate-100 text-slate-400`}
+        role="img"
+        title="This slot is closed"
         aria-label={`${time} closed`}
+        className={`${baseCls} cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400`}
       >
-        —
+        <span>—</span>
+        <span className="text-[10px] font-medium uppercase tracking-wider">
+          Closed
+        </span>
       </span>
     );
   }
@@ -379,7 +418,7 @@ function SlotCell({
           : `${baseCls} border border-brand bg-white text-brand hover:bg-brand/5 active:bg-brand/10`
       }
     >
-      {time}
+      <span>{time}</span>
     </button>
   );
 }
