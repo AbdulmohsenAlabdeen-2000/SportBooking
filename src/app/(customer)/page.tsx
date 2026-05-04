@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Hero } from "@/components/landing/Hero";
 import { StatsStrip } from "@/components/landing/StatsStrip";
 import { WhySmash } from "@/components/landing/WhySmash";
@@ -34,10 +34,14 @@ async function fetchCourtCount(): Promise<number> {
 
 export default async function HomePage() {
   const courtCount = await fetchCourtCount();
+  // Read the welcome cookie server-side. If present, skip rendering
+  // the overlay altogether — no hydration flash on returning visits.
+  const showWelcome =
+    cookies().get("smash-welcome-seen")?.value !== "1";
 
   return (
     <>
-      <WelcomeOverlay />
+      {showWelcome ? <WelcomeOverlay /> : null}
       <Hero />
       <StatsStrip courtCount={courtCount} />
       <RevealOnScroll>

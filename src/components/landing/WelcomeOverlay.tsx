@@ -4,46 +4,42 @@ import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { FloatingSportsBg } from "@/components/landing/FloatingSportsBg";
 
+const COOKIE_KEY = "smash-welcome-seen";
 const STORAGE_KEY = "smash-welcome-seen";
 
 // Splash welcome that overlays the landing on the first visit. Click
-// "Let's Smash" to play the exit animation and reveal the page
-// underneath. Skips itself for returning visitors via localStorage so
-// it never feels like a paywall on a returning trip.
+// "Let's Smash" or "skip" to play the exit animation and reveal the
+// page underneath. The dismissal is stored as a cookie so the server
+// can omit this component entirely on subsequent renders — no flash on
+// reload. localStorage is kept as a defence-in-depth fallback.
 
 export function WelcomeOverlay() {
-  // "hidden" — never render (returning visitor or already dismissed)
-  // "entering" — first paint, runs entrance animation
-  // "leaving" — button clicked, runs exit animation
-  const [phase, setPhase] = useState<"checking" | "entering" | "leaving" | "hidden">(
-    "checking",
-  );
+  // "preparing" — first paint, off-state classes (so the entrance
+  //               animation has somewhere to come *from*).
+  // "entering"  — useEffect bumps to this on next tick, transition fires.
+  // "leaving"   — button clicked, runs exit animation.
+  // "hidden"    — fully unmounted after exit animation completes.
+  const [phase, setPhase] = useState<
+    "preparing" | "entering" | "leaving" | "hidden"
+  >("preparing");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY) === "1") {
-        setPhase("hidden");
-        return;
-      }
-    } catch {
-      // Private mode / disabled storage — show the welcome anyway.
-    }
-    // Tiny delay so the entrance animation actually plays after mount.
     const t = window.setTimeout(() => setPhase("entering"), 16);
     return () => window.clearTimeout(t);
   }, []);
 
   function dismiss() {
     try {
+      // Cookie is the source of truth; one-year max-age, root path so
+      // every customer route sees the same value.
+      document.cookie = `${COOKIE_KEY}=1; max-age=31536000; path=/; samesite=lax`;
       window.localStorage.setItem(STORAGE_KEY, "1");
     } catch {
-      // Best effort; if storage fails we'll re-show on next visit.
+      // Storage / cookie blocked — overlay reappears next visit, fine.
     }
     setPhase("leaving");
-    // Wait for the CSS transition (700ms) before unmounting so it's not
-    // a hard cutoff — but also unmount eventually so the underlying
-    // landing is fully interactive.
+    // Wait for the CSS transition (700ms) before unmounting so it's
+    // not a hard cutoff. The underlying landing is already painted.
     window.setTimeout(() => setPhase("hidden"), 750);
   }
 
@@ -51,7 +47,7 @@ export function WelcomeOverlay() {
 
   // Reduced-motion users get an instant fade with no scaling.
   const isLeaving = phase === "leaving";
-  const isEntering = phase === "checking" || phase === "entering";
+  const isEntering = phase === "entering";
 
   return (
     <div
