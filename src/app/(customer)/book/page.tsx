@@ -1,26 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { ArrowLeft, ArrowRight, Activity, CircleDot, LandPlot } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import { isUuid } from "@/lib/api";
 import { formatKwd } from "@/lib/time";
 import { format, getDict } from "@/lib/i18n";
-import type { Dict } from "@/lib/i18n/dict.en";
-import type { Court, Sport } from "@/lib/types";
-
-const SPORT_ICON: Record<Sport, typeof Activity> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
-};
-
-function sportLabel(sport: Sport, t: Dict): string {
-  if (sport === "padel") return t.hero.pill_padel;
-  if (sport === "tennis") return t.hero.pill_tennis;
-  return t.hero.pill_football;
-}
+import { SPORT_ICON, sportLabel } from "@/lib/sports";
+import type { Court } from "@/lib/types";
 
 function getBaseUrl() {
   const h = headers();

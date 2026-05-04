@@ -1,4 +1,4 @@
-import type { Sport } from "@/lib/types";
+import { SPORTS, type Sport } from "@/lib/types";
 
 export type CourtInput = {
   name: string;
@@ -17,7 +17,6 @@ const NAME_MIN = 2;
 const NAME_MAX = 80;
 const DESC_MAX = 500;
 const URL_MAX = 1000;
-const SPORTS: ReadonlyArray<Sport> = ["padel", "tennis", "football"];
 const ALLOWED_DURATIONS = [30, 45, 60, 90, 120] as const;
 
 type RawInput = Partial<{

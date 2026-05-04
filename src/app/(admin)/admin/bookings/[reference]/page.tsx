@@ -1,15 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import {
-  Activity,
-  ArrowLeft,
-  CircleDot,
-  LandPlot,
-  MessageCircle,
-  Phone,
-  Mail,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone, Mail } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { BookingActions } from "@/components/admin/BookingActions";
 import {
@@ -19,6 +10,7 @@ import {
 } from "@/lib/time";
 import { format, getDict } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/dict.en";
+import { SPORT_ICON } from "@/lib/sports";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -34,12 +26,6 @@ type Booking = {
   total_price: number;
   status: BookingStatus;
   created_at: string;
-};
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
 };
 
 function getBaseUrl() {

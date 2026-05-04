@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import {
-  Activity,
   ArrowRight,
   Calendar,
-  CircleDot,
   ClipboardList,
-  LandPlot,
   Phone,
   type LucideIcon,
 } from "lucide-react";
@@ -22,6 +19,7 @@ import {
 } from "@/lib/time";
 import { format, getDict } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/dict.en";
+import { SPORT_ICON } from "@/lib/sports";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +48,6 @@ type TodayResponse = {
 
 type WeekResponse = {
   days: { date: string; bookings: number; revenue_kwd: number }[];
-};
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
 };
 
 function getBaseUrl() {

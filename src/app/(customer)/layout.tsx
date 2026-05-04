@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Phone, User } from "lucide-react";
+import { LogIn, Phone, User } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DemoBanner } from "@/components/DemoBanner";
@@ -8,8 +8,8 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { getCurrentCustomer } from "@/lib/customer";
 import { format, getDict, getLocale } from "@/lib/i18n";
 
-const PHONE_RAW = "+96599998888";
-const PHONE_PRETTY = "+965 9999 8888";
+const PHONE_RAW = "+96594490924";
+const PHONE_PRETTY = "+965 9449 0924";
 
 function Logo() {
   return (
@@ -37,8 +37,8 @@ async function Header() {
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200/70 bg-white/95 backdrop-blur shadow-sm">
       <Container className="flex h-full items-center justify-between gap-2">
         <Logo />
-        <div className="flex items-center gap-2">
-          <LanguageToggle current={locale} className="hidden sm:inline-flex" />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <LanguageToggle current={locale} />
           {customer ? (
             <Link
               href="/me"
@@ -49,14 +49,18 @@ async function Header() {
               <span className="hidden md:inline">
                 {customer.name.split(" ")[0]}
               </span>
-              <span className="md:hidden">{t.header.account}</span>
+              <span className="hidden sm:inline md:hidden">
+                {t.header.account}
+              </span>
             </Link>
           ) : (
             <Link
               href="/login"
-              className="hidden h-11 items-center rounded-full px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 md:inline-flex"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              aria-label={t.common.sign_in}
             >
-              {t.common.sign_in}
+              <LogIn className="h-5 w-5 sm:hidden" aria-hidden />
+              <span className="hidden sm:inline">{t.common.sign_in}</span>
             </Link>
           )}
           <a
@@ -69,13 +73,6 @@ async function Header() {
               {PHONE_PRETTY}
             </span>
           </a>
-        </div>
-      </Container>
-      {/* Mobile language toggle: separate row so it doesn't crowd the
-          phone CTA when the header is squeezed at 390px. */}
-      <Container className="flex h-0 items-center justify-end pe-1 sm:hidden">
-        <div className="-translate-y-2">
-          <LanguageToggle current={locale} />
         </div>
       </Container>
     </header>

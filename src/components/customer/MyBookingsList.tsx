@@ -3,16 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  Activity,
-  CalendarOff,
-  CircleDot,
-  LandPlot,
-  Loader2,
-  Star,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarOff, Loader2, Star, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
@@ -25,6 +16,7 @@ import {
 import { useDict } from "@/lib/i18n/client";
 import { format } from "@/lib/i18n/shared";
 import type { Dict } from "@/lib/i18n/dict.en";
+import { SPORT_ICON } from "@/lib/sports";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 type CustomerBooking = {
@@ -35,12 +27,6 @@ type CustomerBooking = {
   court: { id: string; name: string; sport: Sport } | null;
   slot: { start_time: string; end_time: string } | null;
   review: { rating: number; comment: string | null } | null;
-};
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
 };
 
 export function MyBookingsList({

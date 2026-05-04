@@ -21,7 +21,7 @@ export async function requireCustomer(
     return {
       user_id: "demo-customer",
       name: "Demo Customer",
-      phone: "+96599998888",
+      phone: "+96594490924",
       created_at: new Date().toISOString(),
     };
   }

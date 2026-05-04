@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import {
-  CheckCircle2,
-  Activity,
-  CircleDot,
-  LandPlot,
-  type LucideIcon,
-} from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import { CopyReference } from "@/components/book/CopyReference";
@@ -16,20 +10,8 @@ import {
   formatKwd,
 } from "@/lib/time";
 import { getDict } from "@/lib/i18n";
-import type { Dict } from "@/lib/i18n/dict.en";
+import { SPORT_ICON, sportLabel } from "@/lib/sports";
 import type { Sport } from "@/lib/types";
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
-};
-
-function sportLabel(sport: Sport, t: Dict): string {
-  if (sport === "padel") return t.hero.pill_padel;
-  if (sport === "tennis") return t.hero.pill_tennis;
-  return t.hero.pill_football;
-}
 
 type BookingPayload = {
   booking: {

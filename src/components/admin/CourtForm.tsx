@@ -10,8 +10,9 @@ import {
 import { ImagePlus, Loader2, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { useDict } from "@/lib/i18n/client";
 import { format } from "@/lib/i18n/shared";
+import { sportLabel } from "@/lib/sports";
 import type { Dict } from "@/lib/i18n/dict.en";
-import type { Court, Sport } from "@/lib/types";
+import { SPORTS, type Court, type Sport } from "@/lib/types";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -24,15 +25,12 @@ export type CourtFormProps = {
   onSaved: () => void;
 };
 
-const SPORTS: Sport[] = ["padel", "tennis", "football"];
 const DURATIONS = [30, 45, 60, 90, 120];
 
 type Errors = Partial<Record<string, string>>;
 
 function sportOption(sport: Sport, t: Dict): string {
-  if (sport === "padel") return t.admin.court_form_sport_padel;
-  if (sport === "tennis") return t.admin.court_form_sport_tennis;
-  return t.admin.court_form_sport_football;
+  return sportLabel(sport, t);
 }
 
 export function CourtForm({

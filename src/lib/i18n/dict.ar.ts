@@ -547,6 +547,18 @@ export const ar: Dict = {
     booking_reminder:
       "سماش كورتس الكويت: تذكير، {name} — حجزك في {court} غداً ({date}) الساعة {time}. المرجع: {ref}. احضر قبل الموعد بـ 10 دقائق.",
   },
+  sports: {
+    padel: "بادل",
+    tennis: "تنس",
+    football: "كرة قدم",
+    squash: "اسكواش",
+    basketball: "كرة سلة",
+    volleyball: "كرة طائرة",
+    cricket: "كريكيت",
+    pickleball: "بيكلبول",
+    badminton: "ريشة طائرة",
+    futsal: "فوتسال",
+  },
   passkey: {
     title: "مفاتيح المرور",
     subtitle:

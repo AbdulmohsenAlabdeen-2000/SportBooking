@@ -1,4 +1,27 @@
-export type Sport = "padel" | "tennis" | "football";
+export type Sport =
+  | "padel"
+  | "tennis"
+  | "football"
+  | "squash"
+  | "basketball"
+  | "volleyball"
+  | "cricket"
+  | "pickleball"
+  | "badminton"
+  | "futsal";
+
+export const SPORTS: ReadonlyArray<Sport> = [
+  "padel",
+  "tennis",
+  "football",
+  "squash",
+  "basketball",
+  "volleyball",
+  "cricket",
+  "pickleball",
+  "badminton",
+  "futsal",
+];
 
 export type SlotStatus = "open" | "closed" | "booked";
 

@@ -9,14 +9,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import {
-  ArrowLeft,
-  Activity,
-  CircleDot,
-  LandPlot,
-  Loader2,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
@@ -29,15 +22,10 @@ import {
 } from "@/lib/time";
 import { useDict } from "@/lib/i18n/client";
 import type { Dict } from "@/lib/i18n/dict.en";
-import type { Court, Slot, Sport } from "@/lib/types";
+import { SPORT_ICON } from "@/lib/sports";
+import type { Court, Slot } from "@/lib/types";
 
 type CustomerProfile = { user_id: string; name: string; phone: string };
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
-};
 
 const NAME_MIN = 2;
 const NAME_MAX = 80;

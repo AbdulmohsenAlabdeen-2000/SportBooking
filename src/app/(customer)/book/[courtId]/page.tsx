@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  Activity,
-  CircleDot,
-  LandPlot,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import {
@@ -26,13 +20,8 @@ import {
 import { useDict } from "@/lib/i18n/client";
 import { format } from "@/lib/i18n/shared";
 import type { Dict } from "@/lib/i18n/dict.en";
-import type { Court, Slot, Sport } from "@/lib/types";
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
-};
+import { SPORT_ICON } from "@/lib/sports";
+import type { Court, Slot } from "@/lib/types";
 
 type Day = { date: string; open_count: number; total_count: number };
 

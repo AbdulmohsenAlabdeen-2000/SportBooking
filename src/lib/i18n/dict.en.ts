@@ -544,6 +544,18 @@ export const en = {
     booking_reminder:
       "Smash Courts Kuwait: Reminder, {name} — your {court} booking is tomorrow ({date}) at {time}. Ref: {ref}. Arrive 10 min early.",
   },
+  sports: {
+    padel: "Padel",
+    tennis: "Tennis",
+    football: "Football",
+    squash: "Squash",
+    basketball: "Basketball",
+    volleyball: "Volleyball",
+    cricket: "Cricket",
+    pickleball: "Pickleball",
+    badminton: "Badminton",
+    futsal: "Futsal",
+  },
   passkey: {
     title: "Passkeys",
     subtitle:

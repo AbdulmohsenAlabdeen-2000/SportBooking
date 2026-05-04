@@ -1,36 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Activity,
-  CircleDot,
-  LandPlot,
-  Pencil,
-  PlusCircle,
-  Power,
-  RefreshCw,
-  type LucideIcon,
-} from "lucide-react";
+import { Pencil, PlusCircle, Power, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { CourtForm } from "@/components/admin/CourtForm";
 import { formatKwd } from "@/lib/time";
 import { useDict } from "@/lib/i18n/client";
 import { format } from "@/lib/i18n/shared";
-import type { Dict } from "@/lib/i18n/dict.en";
-import type { Court, Sport } from "@/lib/types";
-
-const SPORT_ICON: Record<Sport, LucideIcon> = {
-  padel: Activity,
-  tennis: CircleDot,
-  football: LandPlot,
-};
-
-function sportLabel(sport: Sport, t: Dict): string {
-  if (sport === "padel") return t.hero.pill_padel;
-  if (sport === "tennis") return t.hero.pill_tennis;
-  return t.hero.pill_football;
-}
+import { SPORT_ICON, sportLabel } from "@/lib/sports";
+import type { Court } from "@/lib/types";
 
 type AdminCourt = Court & { is_active: boolean; created_at?: string };
 
