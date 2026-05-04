@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { createCookieClient } from "@/lib/supabase/route";
 import { jsonError } from "@/lib/api";
 import { validateBookingInput } from "@/lib/booking";
 import { generateBookingReference } from "@/lib/reference";
@@ -129,6 +130,26 @@ export async function POST(req: Request) {
         status: string;
         created_at: string;
       };
+
+      // If the request carried a customer session, link the booking to the
+      // user so it shows up under /me. Done as a follow-up update because
+      // create_booking() RPC predates user accounts and doesn't take a
+      // user_id parameter.
+      try {
+        const cookieClient = createCookieClient();
+        const { data: userResp } = await cookieClient.auth.getUser();
+        const userId = userResp.user?.id;
+        if (userId) {
+          await supabase
+            .from("bookings")
+            .update({ user_id: userId })
+            .eq("reference", row.reference);
+        }
+      } catch {
+        // Don't fail the booking if the user_id link errors — the row is
+        // already in place; admin can backfill if needed.
+      }
+
       return NextResponse.json(
         {
           booking: {
