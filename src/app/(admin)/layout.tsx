@@ -4,9 +4,10 @@ import { Building2 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { AdminSidebar, AdminBottomNav } from "@/components/admin/AdminNav";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DemoBanner } from "@/components/DemoBanner";
-import { getDict } from "@/lib/i18n";
+import { getDict, getLocale } from "@/lib/i18n";
 
 export const metadata = {
   title: "Admin — Smash Courts Kuwait",
@@ -22,6 +23,7 @@ export default async function AdminLayout({
 }) {
   const user = await requireAdmin();
   const t = getDict();
+  const locale = getLocale();
 
   return (
     <ToastProvider>
@@ -41,7 +43,8 @@ export default async function AdminLayout({
                 </span>
               </span>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
+              <LanguageToggle current={locale} />
               <span
                 className="hidden truncate text-sm text-slate-600 md:inline"
                 dir="ltr"
