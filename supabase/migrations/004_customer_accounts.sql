@@ -24,12 +24,18 @@ alter table public.customers enable row level security;
 
 drop policy if exists "customer reads own row"   on public.customers;
 drop policy if exists "customer updates own row" on public.customers;
+drop policy if exists "customer inserts own row" on public.customers;
 
--- Each authenticated user can read and update only their own customer row.
--- Server (service role) bypasses RLS for backfill, signup, etc.
+-- Each authenticated user can read, insert, and update only their own
+-- customer row. The signup page upserts on first verify so the profile
+-- exists even when an auth.users row pre-dates the trigger.
 create policy "customer reads own row"
   on public.customers for select
   using (auth.uid() = user_id);
+
+create policy "customer inserts own row"
+  on public.customers for insert
+  with check (auth.uid() = user_id);
 
 create policy "customer updates own row"
   on public.customers for update

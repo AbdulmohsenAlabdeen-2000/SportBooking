@@ -134,6 +134,33 @@ function SignupForm() {
       if (password.length >= 8) {
         await supabase.auth.updateUser({ password });
       }
+
+      // Upsert the customer profile. The DB trigger handles the happy path
+      // (fresh auth.users insert), but if the auth.users row already
+      // existed before the trigger was created — or anything else races —
+      // the trigger never runs. Doing it client-side here belts-and-braces
+      // the profile into existence so /me works on the next render.
+      try {
+        const { data: userResp } = await supabase.auth.getUser();
+        const user = userResp.user;
+        if (user) {
+          await supabase
+            .from("customers")
+            .upsert(
+              {
+                user_id: user.id,
+                name: name.trim(),
+                phone: phoneSentRef.current,
+              },
+              { onConflict: "user_id" },
+            );
+        }
+      } catch {
+        // Best-effort. /me's requireCustomer will redirect back to signup
+        // if the profile is genuinely missing — at that point it's a real
+        // bug worth surfacing.
+      }
+
       router.replace(next);
       router.refresh();
     } catch {
