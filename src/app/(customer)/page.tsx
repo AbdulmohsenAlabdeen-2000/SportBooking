@@ -6,6 +6,7 @@ import { OurCourts } from "@/components/landing/OurCourts";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
+import { WelcomeOverlay } from "@/components/landing/WelcomeOverlay";
 import type { Court } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <WelcomeOverlay />
       <Hero />
       <StatsStrip courtCount={courtCount} />
       <RevealOnScroll>
