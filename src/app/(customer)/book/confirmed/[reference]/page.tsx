@@ -58,7 +58,10 @@ async function fetchBooking(reference: string): Promise<BookingPayload | null> {
   return (await res.json()) as BookingPayload;
 }
 
-export const metadata = { title: "Booking Confirmed — Smash Courts Kuwait" };
+export const metadata = {
+  title: "Booking Confirmed — Smash Courts Kuwait",
+  robots: { index: false, follow: false },
+};
 
 export default async function ConfirmationPage({
   params,
