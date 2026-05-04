@@ -28,7 +28,7 @@ type Args = {
 // source of truth — the SMS is a courtesy.
 export async function sendBookingConfirmationSms(args: Args): Promise<void> {
   if (!isTwilioConfigured()) {
-    console.warn(
+    console.error(
       "[sms] Twilio not configured — skipping booking confirmation",
       { reference: args.reference },
     );
@@ -37,8 +37,9 @@ export async function sendBookingConfirmationSms(args: Args): Promise<void> {
 
   const to = toKuwaitE164(args.rawPhone);
   if (!to) {
-    console.warn("[sms] Couldn't normalize phone for SMS", {
+    console.error("[sms] Couldn't normalize phone for SMS", {
       reference: args.reference,
+      rawPhone: args.rawPhone,
     });
     return;
   }
@@ -64,8 +65,9 @@ export async function sendBookingConfirmationSms(args: Args): Promise<void> {
     });
     return;
   }
-  console.log("[sms] booking confirmation sent", {
+  console.error("[sms] booking confirmation sent", {
     reference: args.reference,
     sid: result.sid,
+    to,
   });
 }
