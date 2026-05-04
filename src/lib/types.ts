@@ -13,6 +13,9 @@ export interface Court {
   price_per_slot: number;
   slot_duration_minutes: number;
   image_url: string | null;
+  // Customer-facing /api/courts strips this (only returns active rows);
+  // /api/admin/courts includes it so admins can reactivate from the UI.
+  is_active?: boolean;
 }
 
 export interface Slot {
