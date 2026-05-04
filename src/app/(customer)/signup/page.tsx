@@ -11,6 +11,7 @@ import {
 } from "react";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Container } from "@/components/ui/Container";
+import { PasswordStrength } from "@/components/ui/PasswordStrength";
 import { createBrowserClient } from "@/lib/supabase/browser";
 import { normalizeKuwaitPhone } from "@/lib/phone";
 
@@ -235,10 +236,7 @@ function SignupForm() {
             </div>
           </Field>
 
-          <Field
-            label="Password (optional, 8+ characters)"
-            error={errors.password}
-          >
+          <Field label="Password (optional)" error={errors.password}>
             <input
               type="password"
               autoComplete="new-password"
@@ -246,7 +244,8 @@ function SignupForm() {
               onChange={(e) => setPassword(e.target.value)}
               className={inputCls(!!errors.password)}
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <PasswordStrength password={password} />
+            <p className="mt-2 text-xs text-slate-500">
               You can sign in by SMS code. Setting a password lets you skip
               the SMS next time.
             </p>
@@ -374,6 +373,13 @@ function humanizeAuthError(msg: string): string {
   }
   if (lower.includes("user already")) {
     return "That number is already registered. Sign in instead.";
+  }
+  if (
+    lower.includes("not reachable") ||
+    lower.includes("unverified") ||
+    lower.includes("error sending sms")
+  ) {
+    return "Couldn't deliver the code to that number. If your phone is on a Twilio trial, only verified numbers receive SMS — verify it in Twilio first.";
   }
   return "Couldn't send the code. Try again.";
 }

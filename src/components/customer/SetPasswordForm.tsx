@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { PasswordStrength } from "@/components/ui/PasswordStrength";
 import { createBrowserClient } from "@/lib/supabase/browser";
 
 export function SetPasswordForm() {
@@ -51,6 +52,7 @@ export function SetPasswordForm() {
           placeholder="At least 8 characters"
           className="mt-1 block h-11 w-full rounded-xl border border-slate-300 px-3 text-base outline-none focus:ring-2 focus:ring-brand"
         />
+        <PasswordStrength password={pw} />
       </label>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <button

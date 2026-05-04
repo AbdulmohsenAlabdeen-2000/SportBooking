@@ -137,7 +137,12 @@ export function MyBookingsList({
           <h2 className="text-sm font-semibold text-slate-700">Past</h2>
           <ul className="mt-2 space-y-2">
             {past.map((b) => (
-              <BookingCard key={b.reference} booking={b} cancellable={false} />
+              <BookingCard
+                key={b.reference}
+                booking={b}
+                cancellable={b.status === "confirmed"}
+                onCancel={() => setConfirmCancel(b)}
+              />
             ))}
           </ul>
         </section>
