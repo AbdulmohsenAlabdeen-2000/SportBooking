@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
+import { isDemoMode } from "@/lib/demo/mode";
+import {
+  getBookingByReference as demoGetByRef,
+  getCourtById as demoGetCourt,
+  getSlotById as demoGetSlot,
+} from "@/lib/demo/store";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +19,27 @@ export async function GET(
 ) {
   const reference = params.reference;
   if (!REFERENCE_RE.test(reference)) return jsonError("booking_not_found", 404);
+
+  if (isDemoMode()) {
+    const booking = demoGetByRef(reference);
+    if (!booking) return jsonError("booking_not_found", 404);
+    const court = demoGetCourt(booking.court_id);
+    const slot = demoGetSlot(booking.slot_id);
+    return NextResponse.json({
+      booking: {
+        reference: booking.reference,
+        court: court ? { id: court.id, name: court.name, sport: court.sport } : null,
+        slot: slot ? { start_time: slot.start_time, end_time: slot.end_time } : null,
+        customer_name: booking.customer_name,
+        customer_phone: booking.customer_phone,
+        customer_email: booking.customer_email,
+        notes: booking.notes,
+        total_price: booking.total_price,
+        status: booking.status,
+        created_at: booking.created_at,
+      },
+    });
+  }
 
   const supabase = createServerClient();
   const { data, error } = await supabase

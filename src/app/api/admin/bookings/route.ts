@@ -6,6 +6,12 @@ import {
   kuwaitDateToUtcRange,
   kuwaitTodayIso,
 } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import {
+  getCourtById as demoGetCourt,
+  getSlotById as demoGetSlot,
+  listAllBookingsInRange as demoBookingsInRange,
+} from "@/lib/demo/store";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +76,51 @@ export async function GET(req: Request) {
 
   const startUtc = kuwaitDateToUtcRange(from).startUtc;
   const endUtc = kuwaitDateToUtcRange(to).endUtc;
+
+  if (isDemoMode()) {
+    let rows = demoBookingsInRange(startUtc, endUtc);
+    if (statusParam !== "all") rows = rows.filter((r) => r.status === statusParam);
+    if (courtParam) rows = rows.filter((r) => r.court_id === courtParam);
+    if (q) {
+      const needle = q.toLowerCase();
+      rows = rows.filter(
+        (r) =>
+          r.reference.toLowerCase().includes(needle) ||
+          r.customer_name.toLowerCase().includes(needle) ||
+          r.customer_phone.toLowerCase().includes(needle),
+      );
+    }
+    rows.sort((a, b) => {
+      const sa = demoGetSlot(a.slot_id)?.start_time ?? "";
+      const sb = demoGetSlot(b.slot_id)?.start_time ?? "";
+      return sb.localeCompare(sa);
+    });
+    const total = rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const fromIdx = (page - 1) * pageSize;
+    const slice = rows.slice(fromIdx, fromIdx + pageSize);
+    const bookings = slice.map((r) => {
+      const court = demoGetCourt(r.court_id);
+      const slot = demoGetSlot(r.slot_id);
+      return {
+        reference: r.reference,
+        court: court ? { id: court.id, name: court.name, sport: court.sport } : null,
+        slot: slot ? { start_time: slot.start_time, end_time: slot.end_time } : null,
+        customer_name: r.customer_name,
+        customer_phone: r.customer_phone,
+        customer_email: r.customer_email,
+        notes: r.notes,
+        total_price: r.total_price,
+        status: r.status,
+        created_at: r.created_at,
+      };
+    });
+    return NextResponse.json({
+      bookings,
+      pagination: { page, pageSize, total, totalPages },
+      filters: { from, to, court_id: courtParam, status: statusParam, q },
+    });
+  }
 
   const supabase = createServerClient();
   let query = supabase

@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
 import { kuwaitDateToUtcRange, kuwaitTodayIso } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import {
+  getCourtById as demoGetCourt,
+  getSlotById as demoGetSlot,
+  listAllBookingsInRange as demoBookingsInRange,
+} from "@/lib/demo/store";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +26,38 @@ type Row = {
 export async function GET() {
   const today = kuwaitTodayIso();
   const { startUtc, endUtc } = kuwaitDateToUtcRange(today);
+
+  if (isDemoMode()) {
+    const rows = demoBookingsInRange(startUtc, endUtc);
+    const bookings = rows
+      .map((r) => {
+        const court = demoGetCourt(r.court_id);
+        const slot = demoGetSlot(r.slot_id);
+        return {
+          reference: r.reference,
+          court: court ? { id: court.id, name: court.name, sport: court.sport } : null,
+          slot: slot ? { start_time: slot.start_time, end_time: slot.end_time } : null,
+          customer_name: r.customer_name,
+          customer_phone: r.customer_phone,
+          total_price: r.total_price,
+          status: r.status,
+          created_at: r.created_at,
+        };
+      })
+      .sort((a, b) =>
+        (a.slot?.start_time ?? "").localeCompare(b.slot?.start_time ?? ""),
+      );
+    const stats = {
+      total: bookings.length,
+      confirmed: bookings.filter((b) => b.status === "confirmed").length,
+      completed: bookings.filter((b) => b.status === "completed").length,
+      cancelled: bookings.filter((b) => b.status === "cancelled").length,
+      revenue_kwd: bookings
+        .filter((b) => b.status === "confirmed" || b.status === "completed")
+        .reduce((sum, b) => sum + b.total_price, 0),
+    };
+    return NextResponse.json({ date: today, bookings, stats });
+  }
 
   const supabase = createServerClient();
   const { data, error } = await supabase

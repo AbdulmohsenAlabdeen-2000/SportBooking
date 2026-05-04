@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
 import { kuwaitDateToUtcRange, kuwaitTodayIso } from "@/lib/time";
+import { isDemoMode } from "@/lib/demo/mode";
+import {
+  getSlotById as demoGetSlot,
+  listAllBookingsInRange as demoBookingsInRange,
+} from "@/lib/demo/store";
 import type { BookingStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +26,29 @@ export async function GET() {
 
   const windowStart = kuwaitDateToUtcRange(days[0]).startUtc;
   const windowEnd = kuwaitDateToUtcRange(days[days.length - 1]).endUtc;
+
+  if (isDemoMode()) {
+    const rows = demoBookingsInRange(windowStart, windowEnd);
+    const buckets = new Map<string, DayBucket>(
+      days.map((d) => [d, { date: d, bookings: 0, revenue_kwd: 0 }]),
+    );
+    for (const row of rows) {
+      const slot = demoGetSlot(row.slot_id);
+      if (!slot) continue;
+      for (const day of days) {
+        const range = kuwaitDateToUtcRange(day);
+        if (slot.start_time >= range.startUtc && slot.start_time < range.endUtc) {
+          const b = buckets.get(day)!;
+          b.bookings += 1;
+          if (row.status === "confirmed" || row.status === "completed") {
+            b.revenue_kwd += row.total_price;
+          }
+          break;
+        }
+      }
+    }
+    return NextResponse.json({ days: Array.from(buckets.values()) });
+  }
 
   const supabase = createServerClient();
   const { data, error } = await supabase

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
+import { isDemoMode } from "@/lib/demo/mode";
+import { updateBookingStatus as demoUpdateStatus } from "@/lib/demo/store";
 import type { BookingStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,15 @@ export async function PATCH(
     return jsonError("invalid_status", 400);
   }
   const target: BookingStatus = body.status;
+
+  if (isDemoMode()) {
+    const result = demoUpdateStatus(reference, target);
+    if (!result.ok) {
+      const status = result.error === "booking_not_found" ? 404 : 409;
+      return jsonError(result.error, status);
+    }
+    return NextResponse.json({ booking: result.booking });
+  }
 
   const supabase = createServerClient();
 
