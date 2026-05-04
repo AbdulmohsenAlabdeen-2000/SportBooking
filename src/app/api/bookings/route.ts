@@ -4,6 +4,12 @@ import { jsonError } from "@/lib/api";
 import { validateBookingInput } from "@/lib/booking";
 import { generateBookingReference } from "@/lib/reference";
 import { getClientIp, isLoopback, rateLimit } from "@/lib/ratelimit";
+import { isDemoMode } from "@/lib/demo/mode";
+import {
+  createBooking as demoCreateBooking,
+  getCourtById as demoGetCourtById,
+  getSlotById as demoGetSlotById,
+} from "@/lib/demo/store";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +49,44 @@ export async function POST(req: Request) {
     );
   }
   const input = parsed.value;
+
+  if (isDemoMode()) {
+    const result = demoCreateBooking({
+      slot_id: input.slot_id,
+      customer_name: input.customer_name,
+      customer_phone: input.customer_phone,
+      customer_email: input.customer_email,
+      notes: input.notes,
+    });
+    if (!result.ok) {
+      const status =
+        result.error === "slot_not_found"
+          ? 404
+          : result.error === "court_not_found"
+            ? 404
+            : 409;
+      return jsonError(result.error, status);
+    }
+    const slot = demoGetSlotById(result.booking.slot_id);
+    const court = demoGetCourtById(result.booking.court_id);
+    return NextResponse.json(
+      {
+        booking: {
+          reference: result.booking.reference,
+          court: court
+            ? { id: court.id, name: court.name, sport: court.sport }
+            : null,
+          slot: slot ? { start_time: slot.start_time, end_time: slot.end_time } : null,
+          customer_name: result.booking.customer_name,
+          customer_phone: result.booking.customer_phone,
+          total_price: result.booking.total_price,
+          status: result.booking.status,
+          created_at: result.booking.created_at,
+        },
+      },
+      { status: 201 },
+    );
+  }
 
   const supabase = createServerClient();
 
