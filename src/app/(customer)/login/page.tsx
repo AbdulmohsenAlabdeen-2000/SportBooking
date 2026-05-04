@@ -12,23 +12,38 @@ import { ArrowLeft, KeyRound, Loader2, MessageSquareText } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { createBrowserClient } from "@/lib/supabase/browser";
 import { normalizeKuwaitPhone } from "@/lib/phone";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<LoginShell />}>
+    <Suspense fallback={<LoginShellWithDict />}>
       <LoginForm />
     </Suspense>
   );
 }
 
-function LoginShell({ children }: { children?: React.ReactNode } = {}) {
+function LoginShellWithDict() {
+  const t = useDict();
+  return <LoginShell t={t} />;
+}
+
+function LoginShell({
+  t,
+  children,
+}: {
+  t: Dict;
+  children?: React.ReactNode;
+}) {
   return (
     <Container className="py-6 md:py-10">
       <Link
         href="/"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Back
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />{" "}
+        {t.common.back}
       </Link>
       <div className="mx-auto mt-6 w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         {children ?? <div className="h-64 animate-pulse rounded bg-slate-100" />}
@@ -41,6 +56,7 @@ type Mode = "code" | "password";
 type Stage = "input" | "code";
 
 function LoginForm() {
+  const t = useDict();
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/me";
@@ -64,7 +80,7 @@ function LoginForm() {
     setError(null);
     const phoneResult = normalizeKuwaitPhone(phone);
     if (!phoneResult.ok) {
-      setError("Enter your 8-digit Kuwait phone number.");
+      setError(t.login.err_invalid_phone);
       return;
     }
     setSubmitting(true);
@@ -76,14 +92,14 @@ function LoginForm() {
         options: { shouldCreateUser: false },
       });
       if (otpErr) {
-        setError(humanizeAuthError(otpErr.message));
+        setError(humanizeAuthError(otpErr.message, t));
         setSubmitting(false);
         return;
       }
       phoneSentRef.current = canonical;
       setStage("code");
     } catch {
-      setError("Network error. Try again.");
+      setError(t.login.err_network);
     } finally {
       setSubmitting(false);
     }
@@ -104,8 +120,8 @@ function LoginForm() {
       if (vErr) {
         setError(
           vErr.message.toLowerCase().includes("expired")
-            ? "That code has expired. Request a new one."
-            : "Wrong code. Double-check and try again.",
+            ? t.login.err_expired
+            : t.login.err_wrong_code,
         );
         setSubmitting(false);
         return;
@@ -113,7 +129,7 @@ function LoginForm() {
       router.replace(safeRedirect(next));
       router.refresh();
     } catch {
-      setError("Network error. Try again.");
+      setError(t.login.err_network);
       setSubmitting(false);
     }
   }
@@ -124,11 +140,11 @@ function LoginForm() {
     setError(null);
     const phoneResult = normalizeKuwaitPhone(phone);
     if (!phoneResult.ok) {
-      setError("Enter your 8-digit Kuwait phone number.");
+      setError(t.login.err_invalid_phone);
       return;
     }
     if (password.length < 1) {
-      setError("Enter your password.");
+      setError(t.login.err_password_required);
       return;
     }
     setSubmitting(true);
@@ -139,14 +155,14 @@ function LoginForm() {
         password,
       });
       if (pErr) {
-        setError("Wrong number or password.");
+        setError(t.login.err_wrong_login);
         setSubmitting(false);
         return;
       }
       router.replace(safeRedirect(next));
       router.refresh();
     } catch {
-      setError("Network error. Try again.");
+      setError(t.login.err_network);
       setSubmitting(false);
     }
   }
@@ -159,15 +175,13 @@ function LoginForm() {
       phone: phoneSentRef.current,
       options: { shouldCreateUser: false },
     });
-    if (rErr) setError(humanizeAuthError(rErr.message));
+    if (rErr) setError(humanizeAuthError(rErr.message, t));
   }
 
   return (
-    <LoginShell>
-      <h1 className="text-2xl font-bold text-slate-900">Sign in</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Use your Kuwait phone number.
-      </p>
+    <LoginShell t={t}>
+      <h1 className="text-2xl font-bold text-slate-900">{t.login.title}</h1>
+      <p className="mt-1 text-sm text-slate-600">{t.login.sub}</p>
 
       <div className="mt-5 grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1 text-sm">
         <button
@@ -179,7 +193,7 @@ function LoginForm() {
           }}
           className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full font-medium transition-colors ${mode === "code" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}
         >
-          <MessageSquareText className="h-4 w-4" aria-hidden /> Code
+          <MessageSquareText className="h-4 w-4" aria-hidden /> {t.login.by_code}
         </button>
         <button
           type="button"
@@ -190,7 +204,7 @@ function LoginForm() {
           }}
           className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full font-medium transition-colors ${mode === "password" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"}`}
         >
-          <KeyRound className="h-4 w-4" aria-hidden /> Password
+          <KeyRound className="h-4 w-4" aria-hidden /> {t.login.by_password}
         </button>
       </div>
 
@@ -205,17 +219,17 @@ function LoginForm() {
 
       {mode === "code" && stage === "input" ? (
         <form className="mt-5 space-y-4" onSubmit={handleSendCode} noValidate>
-          <PhoneField phone={phone} setPhone={setPhone} />
-          <SubmitButton submitting={submitting} label="Send code" />
+          <PhoneField t={t} phone={phone} setPhone={setPhone} />
+          <SubmitButton t={t} submitting={submitting} label={t.login.send_code} />
         </form>
       ) : null}
 
       {mode === "code" && stage === "code" ? (
         <form className="mt-5 space-y-4" onSubmit={handleVerifyCode} noValidate>
           <p className="text-sm text-slate-600">
-            Sent to <span className="font-medium">{phoneSentRef.current}</span>
+            {format(t.login.sent_to, { phone: phoneSentRef.current ?? "" })}
           </p>
-          <Field label="6-digit code">
+          <Field label={t.login.six_digit}>
             <input
               type="text"
               inputMode="numeric"
@@ -227,12 +241,14 @@ function LoginForm() {
               className={`${inputCls(false)} text-center font-mono text-lg tracking-widest`}
               maxLength={6}
               autoFocus
+              dir="ltr"
             />
           </Field>
           <SubmitButton
+            t={t}
             submitting={submitting}
             disabled={code.length !== 6}
-            label="Sign in"
+            label={t.common.sign_in}
           />
           <div className="flex items-center justify-between text-sm">
             <button
@@ -240,14 +256,14 @@ function LoginForm() {
               onClick={() => setStage("input")}
               className="text-slate-600 hover:text-slate-900"
             >
-              ← Use a different number
+              ← {t.login.use_diff_number}
             </button>
             <button
               type="button"
               onClick={resendCode}
               className="font-medium text-brand"
             >
-              Resend code
+              {t.login.resend}
             </button>
           </div>
         </form>
@@ -255,8 +271,8 @@ function LoginForm() {
 
       {mode === "password" ? (
         <form className="mt-5 space-y-4" onSubmit={handlePassword} noValidate>
-          <PhoneField phone={phone} setPhone={setPhone} />
-          <Field label="Password">
+          <PhoneField t={t} phone={phone} setPhone={setPhone} />
+          <Field label={t.login.password_label}>
             <input
               type="password"
               autoComplete="current-password"
@@ -265,32 +281,38 @@ function LoginForm() {
               className={inputCls(false)}
             />
           </Field>
-          <SubmitButton submitting={submitting} label="Sign in" />
+          <SubmitButton
+            t={t}
+            submitting={submitting}
+            label={t.common.sign_in}
+          />
         </form>
       ) : null}
 
       <p className="mt-5 text-center text-sm text-slate-600">
-        New here?{" "}
+        {t.login.new_here}{" "}
         <Link href="/signup" className="font-medium text-brand">
-          Create an account
+          {t.login.create_account}
         </Link>
       </p>
     </LoginShell>
   );
 }
 
-// ─── helpers (kept local to this file to keep deploy units small) ───────────
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 function PhoneField({
+  t,
   phone,
   setPhone,
 }: {
+  t: Dict;
   phone: string;
   setPhone: (s: string) => void;
 }) {
   return (
-    <Field label="Phone (8 digits)">
-      <div className="flex">
+    <Field label={t.book.phone_label}>
+      <div className="flex" dir="ltr">
         <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600">
           +965
         </span>
@@ -338,10 +360,12 @@ function inputCls(hasError: boolean) {
 }
 
 function SubmitButton({
+  t,
   submitting,
   disabled = false,
   label,
 }: {
+  t: Dict;
   submitting: boolean;
   disabled?: boolean;
   label: string;
@@ -360,7 +384,7 @@ function SubmitButton({
     >
       {submitting ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Working…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t.common.working}
         </>
       ) : (
         label
@@ -369,16 +393,16 @@ function SubmitButton({
   );
 }
 
-function humanizeAuthError(msg: string): string {
+function humanizeAuthError(msg: string, t: Dict): string {
   const lower = msg.toLowerCase();
   if (lower.includes("rate") || lower.includes("too many")) {
-    return "Too many requests. Wait a minute, then try again.";
+    return t.login.err_too_many;
   }
   if (lower.includes("user not found") || lower.includes("not exist")) {
-    return "No account found for that number. Sign up first.";
+    return t.login.err_no_account;
   }
   if (lower.includes("invalid phone")) {
-    return "That phone number doesn't look right.";
+    return t.login.err_phone_format;
   }
-  return "Couldn't send the code. Try again.";
+  return t.login.err_couldnt_send;
 }

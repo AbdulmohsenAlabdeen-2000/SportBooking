@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Suspense,
-  useEffect,
   useRef,
   useState,
   type FormEvent,
@@ -14,23 +13,38 @@ import { Container } from "@/components/ui/Container";
 import { PasswordStrength } from "@/components/ui/PasswordStrength";
 import { createBrowserClient } from "@/lib/supabase/browser";
 import { normalizeKuwaitPhone } from "@/lib/phone";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<SignupShell />}>
+    <Suspense fallback={<SignupShellWithDict />}>
       <SignupForm />
     </Suspense>
   );
 }
 
-function SignupShell({ children }: { children?: React.ReactNode } = {}) {
+function SignupShellWithDict() {
+  const t = useDict();
+  return <SignupShell t={t} />;
+}
+
+function SignupShell({
+  t,
+  children,
+}: {
+  t: Dict;
+  children?: React.ReactNode;
+}) {
   return (
     <Container className="py-6 md:py-10">
       <Link
         href="/"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Back
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />{" "}
+        {t.common.back}
       </Link>
       <div className="mx-auto mt-6 w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         {children ?? <div className="h-64 animate-pulse rounded bg-slate-100" />}
@@ -42,6 +56,7 @@ function SignupShell({ children }: { children?: React.ReactNode } = {}) {
 type Stage = "details" | "code";
 
 function SignupForm() {
+  const t = useDict();
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/me";
@@ -65,14 +80,14 @@ function SignupForm() {
     const fieldErrors: Record<string, string> = {};
     const trimmedName = name.trim();
     if (trimmedName.length < 2 || trimmedName.length > 80) {
-      fieldErrors.name = "Enter your full name (2–80 characters).";
+      fieldErrors.name = t.signup.err_name;
     }
     const phoneResult = normalizeKuwaitPhone(phone);
     if (!phoneResult.ok) {
-      fieldErrors.phone = "Enter your 8-digit Kuwait phone number.";
+      fieldErrors.phone = t.signup.err_phone;
     }
     if (password.length > 0 && password.length < 8) {
-      fieldErrors.password = "Password must be at least 8 characters.";
+      fieldErrors.password = t.signup.err_password_short;
     }
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
@@ -91,14 +106,14 @@ function SignupForm() {
         },
       });
       if (otpErr) {
-        setError(humanizeAuthError(otpErr.message));
+        setError(humanizeAuthError(otpErr.message, t));
         setSubmitting(false);
         return;
       }
       phoneSentRef.current = canonical;
       setStage("code");
     } catch {
-      setError("Network error. Try again.");
+      setError(t.signup.err_network);
     } finally {
       setSubmitting(false);
     }
@@ -108,7 +123,7 @@ function SignupForm() {
     ev.preventDefault();
     if (submitting) return;
     if (!phoneSentRef.current) {
-      setError("Phone session lost. Start over.");
+      setError(t.signup.err_session_lost);
       setStage("details");
       return;
     }
@@ -125,22 +140,16 @@ function SignupForm() {
       if (vErr) {
         setError(
           vErr.message.toLowerCase().includes("expired")
-            ? "That code has expired. Request a new one."
-            : "Wrong code. Double-check and try again.",
+            ? t.signup.err_expired
+            : t.signup.err_wrong_code,
         );
         setSubmitting(false);
         return;
       }
-      // Optionally set the password the user picked at the details step.
       if (password.length >= 8) {
         await supabase.auth.updateUser({ password });
       }
 
-      // Upsert the customer profile. The DB trigger handles the happy path
-      // (fresh auth.users insert), but if the auth.users row already
-      // existed before the trigger was created — or anything else races —
-      // the trigger never runs. Doing it client-side here belts-and-braces
-      // the profile into existence so /me works on the next render.
       try {
         const { data: userResp } = await supabase.auth.getUser();
         const user = userResp.user;
@@ -157,15 +166,13 @@ function SignupForm() {
             );
         }
       } catch {
-        // Best-effort. /me's requireCustomer will redirect back to signup
-        // if the profile is genuinely missing — at that point it's a real
-        // bug worth surfacing.
+        // Best-effort. /me's requireCustomer redirects back here if missing.
       }
 
       router.replace(next);
       router.refresh();
     } catch {
-      setError("Network error. Try again.");
+      setError(t.signup.err_network);
       setSubmitting(false);
     }
   }
@@ -177,22 +184,22 @@ function SignupForm() {
     const { error: rErr } = await supabase.auth.signInWithOtp({
       phone: phoneSentRef.current,
     });
-    if (rErr) setError(humanizeAuthError(rErr.message));
+    if (rErr) setError(humanizeAuthError(rErr.message, t));
   }
 
   return (
-    <SignupShell>
+    <SignupShell t={t}>
       <div className="mb-1 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-brand">
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-        Create account
+        {t.signup.eyebrow}
       </div>
       <h1 className="text-2xl font-bold text-slate-900">
-        {stage === "details" ? "Sign up to book" : "Enter the 6-digit code"}
+        {stage === "details" ? t.signup.title_details : t.signup.title_code}
       </h1>
       <p className="mt-1 text-sm text-slate-600">
         {stage === "details"
-          ? "We'll text you a code to verify your number."
-          : `Sent to ${phoneSentRef.current}`}
+          ? t.signup.sub_details
+          : format(t.signup.sub_code, { phone: phoneSentRef.current ?? "" })}
       </p>
 
       {error ? (
@@ -206,7 +213,7 @@ function SignupForm() {
 
       {stage === "details" ? (
         <form className="mt-5 space-y-4" onSubmit={handleDetails} noValidate>
-          <Field label="Full name" error={errors.name}>
+          <Field label={t.signup.full_name} error={errors.name}>
             <input
               type="text"
               autoComplete="name"
@@ -217,8 +224,8 @@ function SignupForm() {
             />
           </Field>
 
-          <Field label="Phone (8 digits)" error={errors.phone}>
-            <div className="flex">
+          <Field label={t.signup.phone_label} error={errors.phone}>
+            <div className="flex" dir="ltr">
               <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-600">
                 +965
               </span>
@@ -236,7 +243,7 @@ function SignupForm() {
             </div>
           </Field>
 
-          <Field label="Password (optional)" error={errors.password}>
+          <Field label={t.signup.password_optional} error={errors.password}>
             <input
               type="password"
               autoComplete="new-password"
@@ -246,22 +253,21 @@ function SignupForm() {
             />
             <PasswordStrength password={password} />
             <p className="mt-2 text-xs text-slate-500">
-              You can sign in by SMS code. Setting a password lets you skip
-              the SMS next time.
+              {t.signup.password_help}
             </p>
           </Field>
 
-          <SubmitButton submitting={submitting} label="Send code" />
+          <SubmitButton t={t} submitting={submitting} label={t.signup.send_code} />
           <p className="text-center text-sm text-slate-600">
-            Already have an account?{" "}
+            {t.signup.already_have}{" "}
             <Link href="/login" className="font-medium text-brand">
-              Sign in
+              {t.common.sign_in}
             </Link>
           </p>
         </form>
       ) : (
         <form className="mt-5 space-y-4" onSubmit={handleCode} noValidate>
-          <Field label="6-digit code">
+          <Field label={t.login.six_digit}>
             <input
               type="text"
               inputMode="numeric"
@@ -273,12 +279,14 @@ function SignupForm() {
               className={`${inputCls(false)} text-center font-mono text-lg tracking-widest`}
               maxLength={6}
               autoFocus
+              dir="ltr"
             />
           </Field>
           <SubmitButton
+            t={t}
             submitting={submitting}
             disabled={code.length !== 6}
-            label="Verify and finish"
+            label={t.signup.verify_finish}
           />
           <div className="flex items-center justify-between text-sm">
             <button
@@ -286,14 +294,14 @@ function SignupForm() {
               onClick={() => setStage("details")}
               className="text-slate-600 hover:text-slate-900"
             >
-              ← Edit details
+              ← {t.signup.edit_details}
             </button>
             <button
               type="button"
               onClick={resendCode}
               className="font-medium text-brand"
             >
-              Resend code
+              {t.signup.resend}
             </button>
           </div>
         </form>
@@ -332,10 +340,12 @@ function inputCls(hasError: boolean) {
 }
 
 function SubmitButton({
+  t,
   submitting,
   disabled = false,
   label,
 }: {
+  t: Dict;
   submitting: boolean;
   disabled?: boolean;
   label: string;
@@ -354,7 +364,7 @@ function SubmitButton({
     >
       {submitting ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Working…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t.common.working}
         </>
       ) : (
         label
@@ -363,23 +373,23 @@ function SubmitButton({
   );
 }
 
-function humanizeAuthError(msg: string): string {
+function humanizeAuthError(msg: string, t: Dict): string {
   const lower = msg.toLowerCase();
   if (lower.includes("rate") || lower.includes("too many")) {
-    return "Too many requests. Wait a minute, then try again.";
+    return t.signup.err_too_many;
   }
   if (lower.includes("invalid phone")) {
-    return "That phone number doesn't look right. Use 8 digits.";
+    return t.signup.err_phone_format;
   }
   if (lower.includes("user already")) {
-    return "That number is already registered. Sign in instead.";
+    return t.signup.err_already_registered;
   }
   if (
     lower.includes("not reachable") ||
     lower.includes("unverified") ||
     lower.includes("error sending sms")
   ) {
-    return "Couldn't deliver the code to that number. If your phone is on a Twilio trial, only verified numbers receive SMS — verify it in Twilio first.";
+    return t.signup.err_unverified;
   }
-  return "Couldn't send the code. Try again.";
+  return t.signup.err_couldnt_send;
 }

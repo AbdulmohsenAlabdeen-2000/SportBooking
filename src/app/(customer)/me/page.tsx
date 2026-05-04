@@ -7,6 +7,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { MyBookingsList } from "@/components/customer/MyBookingsList";
 import { CustomerSignOut } from "@/components/customer/CustomerSignOut";
 import { SetPasswordForm } from "@/components/customer/SetPasswordForm";
+import { getDict } from "@/lib/i18n";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,7 @@ async function loadMyBookings(userId: string) {
 }
 
 export default async function MyAccountPage() {
+  const t = getDict();
   const customer = await requireCustomer();
   const bookings = await loadMyBookings(customer.user_id);
 
@@ -75,7 +77,7 @@ export default async function MyAccountPage() {
         href="/"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Home
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /> {t.common.home}
       </Link>
 
       <div className="mt-3 flex items-start justify-between gap-3">
@@ -87,23 +89,26 @@ export default async function MyAccountPage() {
             <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
               {customer.name}
             </h1>
-            <p className="mt-0.5 text-sm text-slate-600">{customer.phone}</p>
+            <p className="mt-0.5 text-sm text-slate-600" dir="ltr">
+              {customer.phone}
+            </p>
           </div>
         </div>
         <CustomerSignOut />
       </div>
 
-      <h2 className="mt-8 text-lg font-semibold text-slate-900">My bookings</h2>
+      <h2 className="mt-8 text-lg font-semibold text-slate-900">
+        {t.me.my_bookings}
+      </h2>
       <div className="mt-3">
         <MyBookingsList initial={bookings} />
       </div>
 
-      <h2 className="mt-8 text-lg font-semibold text-slate-900">Sign-in options</h2>
+      <h2 className="mt-8 text-lg font-semibold text-slate-900">
+        {t.me.signin_options}
+      </h2>
       <Card className="mt-3">
-        <p className="text-sm text-slate-600">
-          You can sign in by SMS code (always available). Adding a password
-          lets you skip the SMS next time.
-        </p>
+        <p className="text-sm text-slate-600">{t.me.signin_options_help}</p>
         <div className="mt-4">
           <SetPasswordForm />
         </div>

@@ -5,8 +5,10 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { PasswordStrength } from "@/components/ui/PasswordStrength";
 import { createBrowserClient } from "@/lib/supabase/browser";
+import { useDict } from "@/lib/i18n/client";
 
 export function SetPasswordForm() {
+  const t = useDict();
   const { toast } = useToast();
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,7 +19,7 @@ export function SetPasswordForm() {
     if (busy) return;
     setError(null);
     if (pw.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t.me.set_password_short);
       return;
     }
     setBusy(true);
@@ -25,14 +27,14 @@ export function SetPasswordForm() {
       const supabase = createBrowserClient();
       const { error: e } = await supabase.auth.updateUser({ password: pw });
       if (e) {
-        setError("Couldn't update — try again.");
+        setError(t.me.set_password_couldnt);
         setBusy(false);
         return;
       }
-      toast("Password saved.", "success");
+      toast(t.me.set_password_saved, "success");
       setPw("");
     } catch {
-      setError("Network error.");
+      setError(t.common.network_error);
     } finally {
       setBusy(false);
     }
@@ -42,14 +44,14 @@ export function SetPasswordForm() {
     <form onSubmit={onSubmit} className="space-y-3" noValidate>
       <label className="block">
         <span className="text-sm font-medium text-slate-900">
-          Set or change password (optional)
+          {t.me.set_password_label}
         </span>
         <input
           type="password"
           autoComplete="new-password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
-          placeholder="At least 8 characters"
+          placeholder={t.me.set_password_placeholder}
           className="mt-1 block h-11 w-full rounded-xl border border-slate-300 px-3 text-base outline-none focus:ring-2 focus:ring-brand"
         />
         <PasswordStrength password={pw} />
@@ -67,10 +69,10 @@ export function SetPasswordForm() {
       >
         {busy ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Saving…
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t.common.saving}
           </>
         ) : (
-          "Save password"
+          t.me.set_password_save
         )}
       </button>
     </form>

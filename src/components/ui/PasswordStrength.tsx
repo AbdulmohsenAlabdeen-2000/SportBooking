@@ -1,11 +1,9 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import {
-  evaluatePassword,
-  PASSWORD_RULE_LABELS,
-  type PasswordRule,
-} from "@/lib/password";
+import { evaluatePassword, type PasswordRule } from "@/lib/password";
+import { useDict } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 const RULE_ORDER: PasswordRule[] = [
   "min_length",
@@ -31,6 +29,28 @@ const TIER_TEXT = {
   4: "text-emerald-700",
 } as const;
 
+function ruleLabel(rule: PasswordRule, t: Dict): string {
+  switch (rule) {
+    case "min_length":
+      return t.password_strength.rule_min_length;
+    case "uppercase":
+      return t.password_strength.rule_uppercase;
+    case "lowercase":
+      return t.password_strength.rule_lowercase;
+    case "digit":
+      return t.password_strength.rule_digit;
+    case "special":
+      return t.password_strength.rule_special;
+  }
+}
+
+function strengthLabel(label: "" | "Weak" | "Medium" | "Strong", t: Dict): string {
+  if (label === "Weak") return t.password_strength.weak;
+  if (label === "Medium") return t.password_strength.medium;
+  if (label === "Strong") return t.password_strength.strong;
+  return "";
+}
+
 export function PasswordStrength({
   password,
   className = "",
@@ -38,9 +58,11 @@ export function PasswordStrength({
   password: string;
   className?: string;
 }) {
+  const t = useDict();
   if (password.length === 0) return null;
 
   const s = evaluatePassword(password);
+  const label = strengthLabel(s.label, t);
 
   return (
     <div className={`mt-2 ${className}`}>
@@ -57,7 +79,7 @@ export function PasswordStrength({
           className={`text-xs font-medium ${TIER_TEXT[s.score]}`}
           aria-live="polite"
         >
-          {s.label || "—"}
+          {label || "—"}
         </span>
       </div>
       <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -73,7 +95,7 @@ export function PasswordStrength({
               ) : (
                 <X className="h-3.5 w-3.5 text-slate-400" aria-hidden />
               )}
-              {PASSWORD_RULE_LABELS[rule]}
+              {ruleLabel(rule, t)}
             </li>
           );
         })}

@@ -22,6 +22,9 @@ import {
   formatKuwaitTimeRange,
   formatKwd,
 } from "@/lib/time";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 type CustomerBooking = {
@@ -45,6 +48,7 @@ export function MyBookingsList({
 }: {
   initial: CustomerBooking[];
 }) {
+  const t = useDict();
   const router = useRouter();
   const { toast } = useToast();
   const [confirmCancel, setConfirmCancel] = useState<CustomerBooking | null>(
@@ -61,22 +65,21 @@ export function MyBookingsList({
         method: "POST",
       });
       if (res.ok) {
-        toast("Booking cancelled. Slot is open again.", "success");
+        toast(t.me.cancelled_success, "success");
         setConfirmCancel(null);
         router.refresh();
         return;
       }
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (res.status === 409) {
-        toast("This booking is already finalized.", "error");
+        toast(t.me.cancelled_already_finalized, "error");
         router.refresh();
       } else if (res.status === 404) {
-        toast("Couldn't find that booking.", "error");
+        toast(t.me.not_found, "error");
       } else {
-        toast("Couldn't cancel — try again.", "error");
+        toast(t.me.cant_cancel, "error");
       }
     } catch {
-      toast("Network error.", "error");
+      toast(t.common.network_error, "error");
     } finally {
       setBusy(false);
     }
@@ -90,16 +93,14 @@ export function MyBookingsList({
           aria-hidden
         />
         <p className="mt-2 text-base font-medium text-slate-900">
-          No bookings yet
+          {t.me.no_bookings_title}
         </p>
-        <p className="mt-1 text-sm">
-          Pick a court to make your first booking.
-        </p>
+        <p className="mt-1 text-sm">{t.me.no_bookings_sub}</p>
         <Link
           href="/book"
           className="mt-5 inline-flex h-11 items-center rounded-full bg-accent px-6 font-semibold text-white"
         >
-          Book a court
+          {t.me.book_a_court}
         </Link>
       </Card>
     );
@@ -119,14 +120,26 @@ export function MyBookingsList({
       ),
   );
 
+  const cancelMessage = confirmCancel?.slot
+    ? format(t.me.cancel_message_with_court, {
+        court: confirmCancel.court?.name ?? "—",
+        date: formatKuwaitFullDate(confirmCancel.slot.start_time.slice(0, 10)),
+        time: formatKuwaitTimeRange(
+          confirmCancel.slot.start_time,
+          confirmCancel.slot.end_time,
+        ),
+      })
+    : t.me.cancel_message_simple;
+
   return (
     <>
       {upcoming.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-700">Upcoming</h2>
+          <h2 className="text-sm font-semibold text-slate-700">{t.me.upcoming}</h2>
           <ul className="mt-2 space-y-2">
             {upcoming.map((b) => (
               <BookingCard
+                t={t}
                 key={b.reference}
                 booking={b}
                 cancellable
@@ -139,10 +152,11 @@ export function MyBookingsList({
 
       {past.length > 0 && (
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-700">Past</h2>
+          <h2 className="text-sm font-semibold text-slate-700">{t.me.past}</h2>
           <ul className="mt-2 space-y-2">
             {past.map((b) => (
               <BookingCard
+                t={t}
                 key={b.reference}
                 booking={b}
                 cancellable={b.status === "confirmed"}
@@ -167,14 +181,10 @@ export function MyBookingsList({
 
       <ConfirmModal
         open={confirmCancel !== null}
-        title="Cancel this booking?"
-        message={
-          confirmCancel?.slot
-            ? `Your ${confirmCancel.court?.name ?? "court"} booking on ${formatKuwaitFullDate(confirmCancel.slot.start_time.slice(0, 10))} at ${formatKuwaitTimeRange(confirmCancel.slot.start_time, confirmCancel.slot.end_time)} will be released and become available for others to book.`
-            : "This booking will be cancelled."
-        }
-        confirmLabel="Yes, cancel booking"
-        cancelLabel="Keep booking"
+        title={t.me.cancel_title}
+        message={cancelMessage}
+        confirmLabel={t.me.cancel_yes}
+        cancelLabel={t.me.cancel_keep}
         variant="danger"
         busy={busy}
         onConfirm={() => (confirmCancel ? void cancel(confirmCancel) : null)}
@@ -185,11 +195,13 @@ export function MyBookingsList({
 }
 
 function BookingCard({
+  t,
   booking,
   cancellable,
   onCancel,
   onReview,
 }: {
+  t: Dict;
   booking: CustomerBooking;
   cancellable: boolean;
   onCancel?: () => void;
@@ -197,8 +209,6 @@ function BookingCard({
 }) {
   const SportIcon = booking.court ? SPORT_ICON[booking.court.sport] : null;
 
-  // A booking is reviewable only after it has actually started, isn't
-  // cancelled, and hasn't already been reviewed.
   const now = Date.now();
   const reviewable =
     !!booking.slot &&
@@ -225,7 +235,7 @@ function BookingCard({
                 : "—"}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              <StatusPill status={booking.status} />
+              <StatusPill status={booking.status} t={t} />
               <span className="font-mono text-[11px] text-slate-500">
                 {booking.reference}
               </span>
@@ -260,7 +270,7 @@ function BookingCard({
                 onClick={onReview}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-sm font-medium text-amber-800 hover:bg-amber-50"
               >
-                <Star className="h-4 w-4" aria-hidden /> Leave a review
+                <Star className="h-4 w-4" aria-hidden /> {t.me.leave_review}
               </button>
             ) : null}
             {cancellable ? (
@@ -269,7 +279,7 @@ function BookingCard({
                 onClick={onCancel}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
               >
-                <XCircle className="h-4 w-4" aria-hidden /> Cancel booking
+                <XCircle className="h-4 w-4" aria-hidden /> {t.me.cancel_booking}
               </button>
             ) : null}
           </div>
@@ -279,16 +289,16 @@ function BookingCard({
   );
 }
 
-function StatusPill({ status }: { status: BookingStatus }) {
+function StatusPill({ status, t }: { status: BookingStatus; t: Dict }) {
   const cls = {
     confirmed: "bg-brand/10 text-brand border-brand/20",
     completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
     cancelled: "bg-red-50 text-red-700 border-red-200",
   }[status];
   const label = {
-    confirmed: "Confirmed",
-    completed: "Completed",
-    cancelled: "Cancelled",
+    confirmed: t.me.status_confirmed,
+    completed: t.me.status_completed,
+    cancelled: t.me.status_cancelled,
   }[status];
   return (
     <span
@@ -299,8 +309,6 @@ function StatusPill({ status }: { status: BookingStatus }) {
   );
 }
 
-// Used by the page-level loader skeleton — kept here so it travels with the
-// list rather than being a page-level concern.
 export function Loading() {
   return (
     <div className="flex justify-center py-10">

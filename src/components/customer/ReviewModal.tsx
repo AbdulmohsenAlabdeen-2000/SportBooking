@@ -3,6 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Loader2, Star } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
 
 const COMMENT_MAX = 500;
 
@@ -19,6 +21,7 @@ export function ReviewModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
+  const t = useDict();
   const { toast } = useToast();
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -52,7 +55,7 @@ export function ReviewModal({
     ev.preventDefault();
     if (busy) return;
     if (rating < 1 || rating > 5) {
-      setError("Pick a star rating from 1 to 5.");
+      setError(t.review.err_pick_rating);
       return;
     }
     setError(null);
@@ -68,22 +71,22 @@ export function ReviewModal({
         }),
       });
       if (res.status === 201) {
-        toast("Thanks for the review!", "success");
+        toast(t.review.thanks, "success");
         onSubmitted();
         return;
       }
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (res.status === 409 && json.error === "already_reviewed") {
-        setError("You've already reviewed this booking.");
+        setError(t.review.err_already);
       } else if (res.status === 409 && json.error === "booking_not_started") {
-        setError("You can only review a booking after the slot has started.");
+        setError(t.review.err_not_started);
       } else if (res.status === 409 && json.error === "booking_cancelled") {
-        setError("Cancelled bookings can't be reviewed.");
+        setError(t.review.err_cancelled);
       } else {
-        setError("Couldn't submit — try again.");
+        setError(t.review.err_couldnt);
       }
     } catch {
-      setError("Network error.");
+      setError(t.review.err_network);
     } finally {
       setBusy(false);
     }
@@ -100,20 +103,19 @@ export function ReviewModal({
     >
       <button
         type="button"
-        aria-label="Cancel"
+        aria-label={t.common.cancel}
         onClick={() => (busy ? null : onClose())}
         className="absolute inset-0 h-full w-full cursor-default bg-slate-900/60"
       />
       <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200">
         <h2 id="review-title" className="text-lg font-semibold text-slate-900">
-          How was your game?
+          {t.review.title}
         </h2>
         {courtName ? (
           <p className="mt-1 text-sm text-slate-600">{courtName}</p>
         ) : null}
 
         <form className="mt-5 space-y-4" onSubmit={onSubmit} noValidate>
-          {/* Star picker */}
           <div className="flex items-center justify-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -122,7 +124,10 @@ export function ReviewModal({
                 onMouseEnter={() => setHover(n)}
                 onMouseLeave={() => setHover(0)}
                 onClick={() => setRating(n)}
-                aria-label={`${n} star${n === 1 ? "" : "s"}`}
+                aria-label={format(
+                  n === 1 ? t.review.star_one : t.review.star_other,
+                  { n },
+                )}
                 className="rounded-md p-1 transition-transform hover:scale-110 motion-reduce:transform-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Star
@@ -139,17 +144,17 @@ export function ReviewModal({
 
           <label className="block">
             <span className="text-sm font-medium text-slate-900">
-              Comment (optional)
+              {t.review.comment_label}
             </span>
             <textarea
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={COMMENT_MAX}
-              placeholder="What did you like? Anything we could fix?"
+              placeholder={t.review.comment_placeholder}
               className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-snug outline-none focus:ring-2 focus:ring-brand"
             />
-            <p className="mt-1 text-right text-xs text-slate-500">
+            <p className="mt-1 text-end text-xs text-slate-500">
               {comment.length}/{COMMENT_MAX}
             </p>
           </label>
@@ -170,7 +175,7 @@ export function ReviewModal({
               disabled={busy}
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
-              Not now
+              {t.review.not_now}
             </button>
             <button
               type="submit"
@@ -180,10 +185,10 @@ export function ReviewModal({
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />{" "}
-                  Submitting…
+                  {t.review.submitting}
                 </>
               ) : (
-                "Post review"
+                t.review.post
               )}
             </button>
           </div>
