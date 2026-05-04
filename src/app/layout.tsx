@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -13,6 +13,21 @@ export const metadata: Metadata = {
     description: "Pro-grade courts. Instant booking.",
     locale: "en_KW",
   },
+  applicationName: "Smash Courts",
+  appleWebApp: {
+    title: "Smash Courts",
+    statusBarStyle: "default",
+    capable: true,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0F766E" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D5F58" },
+  ],
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
