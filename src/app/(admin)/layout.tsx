@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { AdminSidebar, AdminBottomNav } from "@/components/admin/AdminNav";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import { ToastProvider } from "@/components/ui/Toast";
+import { DemoBanner } from "@/components/DemoBanner";
 
 export const metadata = {
   title: "Admin — Smash Courts Kuwait",
@@ -25,6 +26,7 @@ export default async function AdminLayout({
   return (
     <ToastProvider>
       <div className="min-h-screen bg-bg text-slate-900">
+      <DemoBanner />
       {/* Top bar */}
       <header className="sticky top-0 z-20 h-14 border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4">

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Phone } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { ToastProvider } from "@/components/ui/Toast";
+import { DemoBanner } from "@/components/DemoBanner";
 
 const PHONE_RAW = "+96599998888";
 const PHONE_PRETTY = "+965 9999 8888";
@@ -84,6 +85,7 @@ function Footer() {
 export default function CustomerLayout({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
+      <DemoBanner />
       <Header />
       <main className="min-h-[calc(100vh-4rem)]">{children}</main>
       <Footer />
