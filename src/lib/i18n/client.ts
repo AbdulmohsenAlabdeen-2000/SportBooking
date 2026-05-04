@@ -1,6 +1,12 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   DEFAULT_LOCALE,
   DICTS,
@@ -9,6 +15,18 @@ import {
   type Locale,
 } from "@/lib/i18n/shared";
 import type { Dict } from "@/lib/i18n/dict.en";
+
+const LocaleContext = createContext<Locale | null>(null);
+
+export function LocaleProvider({
+  locale,
+  children,
+}: {
+  locale: Locale;
+  children: ReactNode;
+}) {
+  return createElement(LocaleContext.Provider, { value: locale }, children);
+}
 
 function readCookieLocale(): Locale {
   if (typeof document === "undefined") return DEFAULT_LOCALE;
@@ -20,18 +38,24 @@ function readCookieLocale(): Locale {
   return isSupportedLocale(value) ? value : DEFAULT_LOCALE;
 }
 
-// Reactive subscription is a no-op — the LanguageToggle calls
-// router.refresh() so server-rendered HTML re-mounts client trees with
-// the right cookie. We still use useSyncExternalStore for SSR safety.
 function subscribe() {
   return () => {};
 }
 
+// useLocale prefers the context (set server-side from cookies() in the
+// layout) so SSR renders the correct dictionary on the first paint.
+// Falls back to reading the cookie directly when no provider is in
+// the tree, e.g. error boundaries that render outside the layout.
 export function useLocale(): Locale {
-  return useSyncExternalStore(subscribe, readCookieLocale, () => DEFAULT_LOCALE);
+  const ctx = useContext(LocaleContext);
+  const cookieLocale = useSyncExternalStore(
+    subscribe,
+    readCookieLocale,
+    () => DEFAULT_LOCALE,
+  );
+  return ctx ?? cookieLocale;
 }
 
 export function useDict(): Dict {
-  const locale = useLocale();
-  return DICTS[locale];
+  return DICTS[useLocale()];
 }

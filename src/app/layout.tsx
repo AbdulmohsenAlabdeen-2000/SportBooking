@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { getLocale, isRtl } from "@/lib/i18n";
+import { LocaleProvider } from "@/lib/i18n/client";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -41,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang={locale} dir={dir} className={inter.variable}>
       <body className="min-h-screen bg-bg font-sans text-slate-900 antialiased">
-        {children}
+        <LocaleProvider locale={locale}>{children}</LocaleProvider>
       </body>
     </html>
   );

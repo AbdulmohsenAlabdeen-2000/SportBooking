@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Sport } from "@/lib/types";
 
 export type CourtFormProps = {
@@ -17,6 +20,12 @@ const DURATIONS = [30, 45, 60, 90, 120];
 
 type Errors = Partial<Record<string, string>>;
 
+function sportOption(sport: Sport, t: Dict): string {
+  if (sport === "padel") return t.admin.court_form_sport_padel;
+  if (sport === "tennis") return t.admin.court_form_sport_tennis;
+  return t.admin.court_form_sport_football;
+}
+
 export function CourtForm({
   open,
   mode,
@@ -24,6 +33,7 @@ export function CourtForm({
   onClose,
   onSaved,
 }: CourtFormProps) {
+  const t = useDict();
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const [name, setName] = useState("");
@@ -38,7 +48,6 @@ export function CourtForm({
   const [submitting, setSubmitting] = useState(false);
   const [topError, setTopError] = useState<string | null>(null);
 
-  // Reset/seed form when opened.
   useEffect(() => {
     if (!open) return;
     setErrors({});
@@ -55,7 +64,6 @@ export function CourtForm({
     dialogRef.current?.focus();
   }, [open, initial]);
 
-  // Body-scroll lock + Escape close while open.
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -112,16 +120,16 @@ export function CourtForm({
         details?: { field: string; error: string }[];
       };
       if (res.status === 409 && json.error === "name_taken") {
-        setErrors({ name: "Another court already uses this name." });
+        setErrors({ name: t.admin.court_form_err_name_taken });
       } else if (res.status === 400 && Array.isArray(json.details)) {
         const map: Errors = {};
-        for (const d of json.details) map[d.field] = humanize(d.error);
+        for (const d of json.details) map[d.field] = humanize(d.error, t);
         setErrors(map);
       } else {
-        setTopError("Couldn't save — try again.");
+        setTopError(t.admin.court_form_err_save);
       }
     } catch {
-      setTopError("Network error.");
+      setTopError(t.common.network_error);
     } finally {
       setSubmitting(false);
     }
@@ -136,7 +144,7 @@ export function CourtForm({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t.admin.court_form_close_aria}
         onClick={() => (submitting ? null : onClose())}
         className="absolute inset-0 h-full w-full cursor-default bg-slate-900/60"
       />
@@ -149,7 +157,9 @@ export function CourtForm({
           id="court-form-title"
           className="text-lg font-semibold text-slate-900"
         >
-          {mode === "create" ? "Add a court" : "Edit court"}
+          {mode === "create"
+            ? t.admin.court_form_add_title
+            : t.admin.court_form_edit_title}
         </h2>
 
         {topError ? (
@@ -162,7 +172,7 @@ export function CourtForm({
         ) : null}
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmit} noValidate>
-          <Field label="Name" error={errors.name}>
+          <Field label={t.admin.court_form_name} error={errors.name}>
             <input
               type="text"
               value={name}
@@ -173,7 +183,7 @@ export function CourtForm({
             />
           </Field>
 
-          <Field label="Sport" error={errors.sport}>
+          <Field label={t.admin.court_form_sport} error={errors.sport}>
             <select
               value={sport}
               onChange={(e) => setSport(e.target.value as Sport)}
@@ -181,14 +191,14 @@ export function CourtForm({
             >
               {SPORTS.map((s) => (
                 <option key={s} value={s}>
-                  {s[0].toUpperCase() + s.slice(1)}
+                  {sportOption(s, t)}
                 </option>
               ))}
             </select>
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Capacity" error={errors.capacity}>
+            <Field label={t.admin.court_form_capacity} error={errors.capacity}>
               <input
                 type="number"
                 inputMode="numeric"
@@ -199,7 +209,7 @@ export function CourtForm({
                 className={inputCls(!!errors.capacity)}
               />
             </Field>
-            <Field label="Price / slot (KWD)" error={errors.price_per_slot}>
+            <Field label={t.admin.court_form_price} error={errors.price_per_slot}>
               <input
                 type="number"
                 inputMode="decimal"
@@ -213,7 +223,7 @@ export function CourtForm({
           </div>
 
           <Field
-            label="Slot duration (min)"
+            label={t.admin.court_form_duration}
             error={errors.slot_duration_minutes}
           >
             <select
@@ -223,13 +233,13 @@ export function CourtForm({
             >
               {DURATIONS.map((d) => (
                 <option key={d} value={d}>
-                  {d} min
+                  {format(t.admin.court_form_duration_unit, { n: d })}
                 </option>
               ))}
             </select>
           </Field>
 
-          <Field label="Description (optional)" error={errors.description}>
+          <Field label={t.admin.court_form_description} error={errors.description}>
             <textarea
               rows={3}
               value={description}
@@ -239,7 +249,7 @@ export function CourtForm({
             />
           </Field>
 
-          <Field label="Photo URL (optional)" error={errors.image_url}>
+          <Field label={t.admin.court_form_image} error={errors.image_url}>
             <input
               type="url"
               inputMode="url"
@@ -247,6 +257,7 @@ export function CourtForm({
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://example.com/court.jpg"
               className={inputCls(!!errors.image_url)}
+              dir="ltr"
             />
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -271,7 +282,7 @@ export function CourtForm({
               onChange={(e) => setIsActive(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
             />
-            Active (bookable by customers)
+            {t.admin.court_form_active}
           </label>
 
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
@@ -281,7 +292,7 @@ export function CourtForm({
               disabled={submitting}
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
-              Cancel
+              {t.common.cancel}
             </button>
             <button
               type="submit"
@@ -290,12 +301,13 @@ export function CourtForm({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Saving…
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />{" "}
+                  {t.admin.court_form_saving}
                 </>
               ) : mode === "create" ? (
-                "Create court"
+                t.admin.court_form_create
               ) : (
-                "Save changes"
+                t.admin.court_form_save
               )}
             </button>
           </div>
@@ -332,25 +344,25 @@ function inputCls(hasError: boolean) {
   ].join(" ");
 }
 
-function humanize(code: string): string {
+function humanize(code: string, t: Dict): string {
   switch (code) {
     case "required":
-      return "This field is required.";
+      return t.admin.court_form_err_required;
     case "invalid_length":
-      return "Name must be 2–80 characters.";
+      return t.admin.court_form_err_invalid_length;
     case "invalid_sport":
-      return "Pick padel, tennis, or football.";
+      return t.admin.court_form_err_invalid_sport;
     case "invalid_capacity":
-      return "Capacity must be 1–100.";
+      return t.admin.court_form_err_invalid_capacity;
     case "invalid_price":
-      return "Price must be a non-negative number.";
+      return t.admin.court_form_err_invalid_price;
     case "invalid_duration":
-      return "Pick a supported slot duration.";
+      return t.admin.court_form_err_invalid_duration;
     case "invalid_url":
-      return "Photo URL must start with http:// or https://";
+      return t.admin.court_form_err_invalid_url;
     case "too_long":
-      return "Too long.";
+      return t.admin.court_form_err_too_long;
     default:
-      return "Please correct this field.";
+      return t.admin.court_form_err_correct;
   }
 }

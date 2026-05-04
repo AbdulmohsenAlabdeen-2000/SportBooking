@@ -1,3 +1,7 @@
+"use client";
+
+import { useDict } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { BookingStatus } from "@/lib/types";
 
 const STYLES: Record<BookingStatus, string> = {
@@ -6,18 +10,19 @@ const STYLES: Record<BookingStatus, string> = {
   cancelled: "bg-red-50 text-red-700 border border-red-200",
 };
 
-const LABELS: Record<BookingStatus, string> = {
-  confirmed: "Confirmed",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
+function label(status: BookingStatus, t: Dict): string {
+  if (status === "confirmed") return t.admin.bookings_status_confirmed;
+  if (status === "completed") return t.admin.bookings_status_completed;
+  return t.admin.bookings_status_cancelled;
+}
 
 export function StatusBadge({ status }: { status: BookingStatus }) {
+  const t = useDict();
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STYLES[status]}`}
     >
-      {LABELS[status]}
+      {label(status, t)}
     </span>
   );
 }

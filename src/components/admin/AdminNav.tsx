@@ -7,20 +7,32 @@ import {
   LayoutDashboard,
   ClipboardList,
   LandPlot,
+  type LucideIcon,
 } from "lucide-react";
+import { useDict } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 type LinkSpec = {
   href: string;
-  label: string;
-  Icon: typeof LayoutDashboard;
+  label: (t: Dict) => string;
+  Icon: LucideIcon;
   exact?: boolean;
 };
 
 const LINKS: LinkSpec[] = [
-  { href: "/admin", label: "Dashboard", Icon: LayoutDashboard, exact: true },
-  { href: "/admin/bookings", label: "Bookings", Icon: ClipboardList },
-  { href: "/admin/slots", label: "Slots", Icon: Calendar },
-  { href: "/admin/courts", label: "Courts", Icon: LandPlot },
+  {
+    href: "/admin",
+    label: (t) => t.admin.nav_dashboard,
+    Icon: LayoutDashboard,
+    exact: true,
+  },
+  {
+    href: "/admin/bookings",
+    label: (t) => t.admin.nav_bookings,
+    Icon: ClipboardList,
+  },
+  { href: "/admin/slots", label: (t) => t.admin.nav_slots, Icon: Calendar },
+  { href: "/admin/courts", label: (t) => t.admin.nav_courts, Icon: LandPlot },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
@@ -29,11 +41,12 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
 }
 
 export function AdminSidebar() {
+  const t = useDict();
   const pathname = usePathname();
   return (
     <nav
       className="hidden h-[calc(100vh-3.5rem)] w-60 flex-none border-r border-slate-200 bg-slate-50 md:block"
-      aria-label="Admin navigation"
+      aria-label={t.admin.nav_aria}
     >
       <ul className="space-y-1 p-3">
         {LINKS.map(({ href, label, Icon, exact }) => {
@@ -50,7 +63,7 @@ export function AdminSidebar() {
                 ].join(" ")}
               >
                 <Icon className="h-4 w-4" aria-hidden />
-                {label}
+                {label(t)}
               </Link>
             </li>
           );
@@ -61,11 +74,12 @@ export function AdminSidebar() {
 }
 
 export function AdminBottomNav() {
+  const t = useDict();
   const pathname = usePathname();
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white md:hidden"
-      aria-label="Admin navigation"
+      aria-label={t.admin.nav_aria}
     >
       {LINKS.map(({ href, label, Icon, exact }) => {
         const active = isActive(pathname, href, exact);
@@ -79,7 +93,7 @@ export function AdminBottomNav() {
             ].join(" ")}
           >
             <Icon className="h-5 w-5" aria-hidden />
-            {label}
+            {label(t)}
           </Link>
         );
       })}

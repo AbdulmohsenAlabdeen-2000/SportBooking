@@ -16,6 +16,8 @@ import {
   isValidIsoDate,
   kuwaitTodayIso,
 } from "@/lib/time";
+import { format, getDict } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { BookingStatus, Court, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +91,7 @@ export default async function AdminBookingsListPage({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  // Build the upstream API query string from incoming searchParams.
+  const t = getDict();
   const upstream = new URLSearchParams();
   const passKeys = ["from", "to", "court_id", "status", "q", "page"] as const;
   for (const k of passKeys) {
@@ -125,53 +127,56 @@ export default async function AdminBookingsListPage({
   return (
     <section className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Bookings</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Search and filter the booking history.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+          {t.admin.bookings_title}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">{t.admin.bookings_sub}</p>
       </div>
 
       <BookingsFilters initial={initialFilters} courts={courts} />
 
       {!list ? (
-        <ErrorCard message="Couldn't load bookings." />
+        <ErrorCard message={t.admin.bookings_err_load} />
       ) : list.bookings.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          No bookings match these filters.
+          {t.admin.bookings_empty}
         </div>
       ) : (
         <>
-          {/* Mobile: cards */}
           <ul className="space-y-2 md:hidden">
             {list.bookings.map((b) => (
               <BookingCard key={b.reference} booking={b} />
             ))}
           </ul>
 
-          {/* Desktop: table */}
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white md:block">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-start text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Ref</th>
-                  <th className="px-4 py-3">Date / Time</th>
-                  <th className="px-4 py-3">Court</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3 text-right">Price</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-start">{t.admin.bookings_h_ref}</th>
+                  <th className="px-4 py-3 text-start">
+                    {t.admin.bookings_h_datetime}
+                  </th>
+                  <th className="px-4 py-3 text-start">{t.admin.bookings_h_court}</th>
+                  <th className="px-4 py-3 text-start">
+                    {t.admin.bookings_h_customer}
+                  </th>
+                  <th className="px-4 py-3 text-start">{t.admin.bookings_h_phone}</th>
+                  <th className="px-4 py-3 text-end">{t.admin.bookings_h_price}</th>
+                  <th className="px-4 py-3 text-start">{t.admin.bookings_h_status}</th>
                   <th className="px-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {list.bookings.map((b) => (
-                  <BookingRow key={b.reference} booking={b} />
+                  <BookingRow key={b.reference} booking={b} t={t} />
                 ))}
               </tbody>
             </table>
           </div>
 
           <Pagination
+            t={t}
             page={list.pagination.page}
             totalPages={list.pagination.totalPages}
             total={list.pagination.total}
@@ -219,7 +224,7 @@ function BookingCard({ booking }: { booking: ListBooking }) {
   );
 }
 
-function BookingRow({ booking }: { booking: ListBooking }) {
+function BookingRow({ booking, t }: { booking: ListBooking; t: Dict }) {
   const SportIcon = booking.court ? SPORT_ICON[booking.court.sport] : null;
   return (
     <tr className="hover:bg-slate-50">
@@ -240,8 +245,10 @@ function BookingRow({ booking }: { booking: ListBooking }) {
         </div>
       </td>
       <td className="px-4 py-3 text-slate-700">{booking.customer_name}</td>
-      <td className="px-4 py-3 text-slate-500">{booking.customer_phone}</td>
-      <td className="px-4 py-3 text-right text-slate-900">
+      <td className="px-4 py-3 text-slate-500" dir="ltr">
+        {booking.customer_phone}
+      </td>
+      <td className="px-4 py-3 text-end text-slate-900">
         {formatKwd(booking.total_price)}
       </td>
       <td className="px-4 py-3">
@@ -250,9 +257,9 @@ function BookingRow({ booking }: { booking: ListBooking }) {
       <td className="px-2 py-3 text-slate-400">
         <Link
           href={`/admin/bookings/${booking.reference}`}
-          aria-label="Open booking"
+          aria-label={t.admin.bookings_open_label}
         >
-          <ChevronRight className="h-4 w-4" aria-hidden />
+          <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden />
         </Link>
       </td>
     </tr>
@@ -260,11 +267,13 @@ function BookingRow({ booking }: { booking: ListBooking }) {
 }
 
 function Pagination({
+  t,
   page,
   totalPages,
   total,
   search,
 }: {
+  t: Dict;
   page: number;
   totalPages: number;
   total: number;
@@ -278,8 +287,11 @@ function Pagination({
   return (
     <div className="flex items-center justify-between text-sm text-slate-600">
       <p>
-        Page <span className="font-medium text-slate-900">{page}</span> of{" "}
-        {totalPages} · {total} total
+        {format(t.common.page_x_of_y, {
+          page,
+          total: totalPages,
+          count: total,
+        })}
       </p>
       <div className="flex gap-2">
         {page > 1 ? (
@@ -287,11 +299,11 @@ function Pagination({
             href={`?${prev.toString()}`}
             className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50"
           >
-            Previous
+            {t.common.previous}
           </Link>
         ) : (
           <span className="inline-flex h-9 cursor-not-allowed items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400">
-            Previous
+            {t.common.previous}
           </span>
         )}
         {page < totalPages ? (
@@ -299,11 +311,11 @@ function Pagination({
             href={`?${next.toString()}`}
             className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50"
           >
-            Next
+            {t.common.next}
           </Link>
         ) : (
           <span className="inline-flex h-9 cursor-not-allowed items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-400">
-            Next
+            {t.common.next}
           </span>
         )}
       </div>

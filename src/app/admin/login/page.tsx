@@ -9,21 +9,32 @@ import {
 } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/browser";
+import { useDict } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dict.en";
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={<LoginShell><LoginPlaceholder /></LoginShell>}>
+    <Suspense fallback={<LoginShellWithDict />}>
       <LoginForm />
     </Suspense>
   );
 }
 
-function LoginShell({ children }: { children: ReactNode }) {
+function LoginShellWithDict() {
+  const t = useDict();
+  return (
+    <LoginShell t={t}>
+      <LoginPlaceholder t={t} />
+    </LoginShell>
+  );
+}
+
+function LoginShell({ t, children }: { t: Dict; children: ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-10">
       <main className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl ring-1 ring-slate-200">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Smash Courts · Admin
+          {t.admin.login_eyebrow}
         </p>
         {children}
       </main>
@@ -31,16 +42,19 @@ function LoginShell({ children }: { children: ReactNode }) {
   );
 }
 
-function LoginPlaceholder() {
+function LoginPlaceholder({ t }: { t: Dict }) {
   return (
     <>
-      <h1 className="mt-1 text-2xl font-bold text-slate-900">Sign in to admin</h1>
+      <h1 className="mt-1 text-2xl font-bold text-slate-900">
+        {t.admin.login_title}
+      </h1>
       <div className="mt-5 h-32 animate-pulse rounded-xl bg-slate-100" />
     </>
   );
 }
 
 function LoginForm() {
+  const t = useDict();
   const router = useRouter();
   const sp = useSearchParams();
   const next = sp.get("next") || "/admin";
@@ -50,9 +64,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(
-    initialErrorCode === "not_authorized"
-      ? "That account isn't authorized for the admin panel."
-      : null,
+    initialErrorCode === "not_authorized" ? t.admin.login_err_unauthorized : null,
   );
 
   async function handleSubmit(ev: FormEvent<HTMLFormElement>) {
@@ -68,25 +80,22 @@ function LoginForm() {
         password,
       });
       if (authErr) {
-        setError("Invalid login. Check your email and password.");
+        setError(t.admin.login_err_invalid);
         setSubmitting(false);
         return;
       }
       router.replace(next.startsWith("/admin") ? next : "/admin");
-      // Force the server layout to re-run requireAdmin() with the freshly
-      // set cookies — without this, the just-written session can race the
-      // navigation and the middleware bounces back here.
       router.refresh();
     } catch {
-      setError("Couldn't reach the auth server. Try again.");
+      setError(t.admin.login_err_network);
       setSubmitting(false);
     }
   }
 
   return (
-    <LoginShell>
+    <LoginShell t={t}>
       <h1 className="mt-1 text-2xl font-bold text-slate-900">
-        Sign in to admin
+        {t.admin.login_title}
       </h1>
 
       {error ? (
@@ -104,7 +113,7 @@ function LoginForm() {
             htmlFor="email"
             className="block text-sm font-medium text-slate-900"
           >
-            Email
+            {t.admin.login_email}
           </label>
           <input
             id="email"
@@ -114,6 +123,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 block h-11 w-full rounded-xl border border-slate-300 px-3 text-base text-slate-900 outline-none focus:ring-2 focus:ring-slate-500"
+            dir="ltr"
           />
         </div>
 
@@ -122,7 +132,7 @@ function LoginForm() {
             htmlFor="password"
             className="block text-sm font-medium text-slate-900"
           >
-            Password
+            {t.admin.login_password}
           </label>
           <input
             id="password"
@@ -147,10 +157,11 @@ function LoginForm() {
         >
           {submitting ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Signing in…
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />{" "}
+              {t.admin.login_progress}
             </>
           ) : (
-            "Sign in"
+            t.admin.login_submit
           )}
         </button>
       </form>

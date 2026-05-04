@@ -17,6 +17,8 @@ import {
   formatKuwaitTimeRange,
   formatKwd,
 } from "@/lib/time";
+import { format, getDict } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { BookingStatus, Sport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -60,19 +62,18 @@ async function fetchBooking(reference: string): Promise<Booking | null> {
   return json.booking;
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: Dict): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const min = Math.round(diffMs / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 1) return t.admin.detail_just_now;
+  if (min < 60) return format(t.admin.detail_min_ago, { n: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return format(t.admin.detail_hr_ago, { n: hr });
   const days = Math.round(hr / 24);
-  return `${days}d ago`;
+  return format(t.admin.detail_d_ago, { n: days });
 }
 
 function whatsappUrl(phone: string): string {
-  // Strip non-digits; if it doesn't start with a country code, prepend 965.
   const digits = phone.replace(/\D/g, "");
   const intl = digits.startsWith("965")
     ? digits
@@ -87,6 +88,7 @@ export default async function AdminBookingDetailPage({
 }: {
   params: { reference: string };
 }) {
+  const t = getDict();
   let booking: Booking | null = null;
   let fetchError = false;
   try {
@@ -96,12 +98,10 @@ export default async function AdminBookingDetailPage({
   }
 
   if (fetchError) {
-    return (
-      <NotFoundCard message="Couldn't load this booking right now." />
-    );
+    return <NotFoundCard t={t} message={t.admin.detail_load_error} />;
   }
   if (!booking) {
-    return <NotFoundCard message="Booking not found." />;
+    return <NotFoundCard t={t} message={t.admin.detail_not_found} />;
   }
 
   const SportIcon = booking.court ? SPORT_ICON[booking.court.sport] : null;
@@ -112,7 +112,8 @@ export default async function AdminBookingDetailPage({
         href="/admin/bookings"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Back to bookings
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />{" "}
+        {t.admin.detail_back}
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -123,10 +124,9 @@ export default async function AdminBookingDetailPage({
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Customer */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-            Customer
+            {t.admin.detail_customer}
           </p>
           <p className="mt-1 text-lg font-semibold text-slate-900">
             {booking.customer_name}
@@ -138,7 +138,7 @@ export default async function AdminBookingDetailPage({
                 className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900"
               >
                 <Phone className="h-4 w-4" aria-hidden />
-                {booking.customer_phone}
+                <span dir="ltr">{booking.customer_phone}</span>
               </a>
             </li>
             <li>
@@ -149,7 +149,7 @@ export default async function AdminBookingDetailPage({
                 className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-800"
               >
                 <MessageCircle className="h-4 w-4" aria-hidden />
-                WhatsApp
+                {t.admin.detail_whatsapp}
               </a>
             </li>
             {booking.customer_email ? (
@@ -159,7 +159,7 @@ export default async function AdminBookingDetailPage({
                   className="inline-flex items-center gap-2 text-slate-700 hover:text-slate-900"
                 >
                   <Mail className="h-4 w-4" aria-hidden />
-                  {booking.customer_email}
+                  <span dir="ltr">{booking.customer_email}</span>
                 </a>
               </li>
             ) : null}
@@ -167,17 +167,16 @@ export default async function AdminBookingDetailPage({
           {booking.notes ? (
             <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Notes
+                {t.admin.detail_notes}
               </p>
               <p className="mt-1 whitespace-pre-wrap">{booking.notes}</p>
             </div>
           ) : null}
         </div>
 
-        {/* Booking */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-            Booking
+            {t.admin.detail_booking}
           </p>
           <div className="mt-1 flex items-center gap-2">
             {SportIcon && (
@@ -188,27 +187,27 @@ export default async function AdminBookingDetailPage({
             </p>
           </div>
           <ul className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
-            <li className="text-slate-500">Date</li>
-            <li className="text-right text-slate-900">
+            <li className="text-slate-500">{t.admin.detail_date}</li>
+            <li className="text-end text-slate-900">
               {booking.slot
                 ? formatKuwaitFullDate(booking.slot.start_time.slice(0, 10))
                 : "—"}
             </li>
-            <li className="text-slate-500">Time</li>
-            <li className="text-right text-slate-900">
+            <li className="text-slate-500">{t.admin.detail_time}</li>
+            <li className="text-end text-slate-900">
               {booking.slot
                 ? formatKuwaitTimeRange(booking.slot.start_time, booking.slot.end_time)
                 : "—"}
             </li>
-            <li className="text-slate-500">Duration</li>
-            <li className="text-right text-slate-900">60 min</li>
-            <li className="text-slate-500">Total</li>
-            <li className="text-right font-semibold text-slate-900">
+            <li className="text-slate-500">{t.admin.detail_duration}</li>
+            <li className="text-end text-slate-900">{t.admin.detail_duration_min}</li>
+            <li className="text-slate-500">{t.admin.detail_total}</li>
+            <li className="text-end font-semibold text-slate-900">
               {formatKwd(booking.total_price)}
             </li>
-            <li className="text-slate-500">Created</li>
-            <li className="text-right text-slate-900">
-              {relativeTime(booking.created_at)}
+            <li className="text-slate-500">{t.admin.detail_created}</li>
+            <li className="text-end text-slate-900">
+              {relativeTime(booking.created_at, t)}
             </li>
           </ul>
         </div>
@@ -219,14 +218,15 @@ export default async function AdminBookingDetailPage({
   );
 }
 
-function NotFoundCard({ message }: { message: string }) {
+function NotFoundCard({ message, t }: { message: string; t: Dict }) {
   return (
     <section className="space-y-4">
       <Link
         href="/admin/bookings"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
       >
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Back to bookings
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />{" "}
+        {t.admin.detail_back}
       </Link>
       <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-600">
         {message}

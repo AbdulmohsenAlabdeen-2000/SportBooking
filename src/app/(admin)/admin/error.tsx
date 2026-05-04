@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
+import { useDict } from "@/lib/i18n/client";
 
 export default function AdminError({
   error,
@@ -11,6 +12,7 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useDict();
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") console.error(error);
   }, [error]);
@@ -23,15 +25,12 @@ export default function AdminError({
         </span>
         <div className="flex-1">
           <h2 className="text-base font-semibold text-red-900">
-            Something went wrong loading this page.
+            {t.admin.error_title}
           </h2>
-          <p className="mt-1 text-sm text-red-800">
-            Try again — if it keeps happening, sign out and back in to refresh
-            your session.
-          </p>
+          <p className="mt-1 text-sm text-red-800">{t.admin.error_sub}</p>
           {error.digest ? (
             <p className="mt-1 font-mono text-xs text-red-700/80">
-              ref: {error.digest}
+              {t.errors_page.ref_label} {error.digest}
             </p>
           ) : null}
           <div className="mt-4 flex gap-2">
@@ -40,13 +39,13 @@ export default function AdminError({
               onClick={() => reset()}
               className="inline-flex h-9 items-center rounded-lg bg-red-600 px-3 text-sm font-medium text-white hover:bg-red-700"
             >
-              Try again
+              {t.common.try_again}
             </button>
             <Link
               href="/admin"
               className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Dashboard
+              {t.admin.error_dashboard}
             </Link>
           </div>
         </div>

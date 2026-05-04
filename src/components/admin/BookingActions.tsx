@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
+import { useDict } from "@/lib/i18n/client";
 import type { BookingStatus } from "@/lib/types";
 
 export function BookingActions({
@@ -14,6 +15,7 @@ export function BookingActions({
   reference: string;
   status: BookingStatus;
 }) {
+  const t = useDict();
   const router = useRouter();
   const { toast } = useToast();
   const [busy, setBusy] = useState<"complete" | "cancel" | null>(null);
@@ -38,13 +40,13 @@ export function BookingActions({
     const result = await patch("completed");
     setBusy(null);
     if (result.ok) {
-      toast("Marked as done.", "success");
+      toast(t.admin.detail_marked_done, "success");
       router.refresh();
     } else if (result.status === 409) {
-      toast("This booking is already finalized.", "error");
+      toast(t.admin.detail_finalized_already, "error");
       router.refresh();
     } else {
-      toast("Couldn't update — try again.", "error");
+      toast(t.admin.detail_couldnt_update, "error");
     }
   }
 
@@ -55,20 +57,20 @@ export function BookingActions({
     setBusy(null);
     setConfirmOpen(false);
     if (result.ok) {
-      toast("Booking cancelled. Slot is now open.", "success");
+      toast(t.admin.detail_cancelled, "success");
       router.refresh();
     } else if (result.status === 409) {
-      toast("This booking is already finalized.", "error");
+      toast(t.admin.detail_finalized_already, "error");
       router.refresh();
     } else {
-      toast("Couldn't cancel — try again.", "error");
+      toast(t.admin.detail_couldnt_cancel, "error");
     }
   }
 
   if (finalized) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        This booking is finalized. No further changes possible.
+        {t.admin.detail_finalized}
       </div>
     );
   }
@@ -87,7 +89,7 @@ export function BookingActions({
           ) : (
             <CheckCircle2 className="h-4 w-4" aria-hidden />
           )}
-          Mark as Done
+          {t.admin.detail_mark_done}
         </button>
         <button
           type="button"
@@ -96,16 +98,16 @@ export function BookingActions({
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-60"
         >
           <XCircle className="h-4 w-4" aria-hidden />
-          Cancel Booking
+          {t.admin.detail_cancel}
         </button>
       </div>
 
       <ConfirmModal
         open={confirmOpen}
-        title="Cancel this booking?"
-        message="The slot will be released and become available for others to book. This can't be undone."
-        confirmLabel="Yes, cancel booking"
-        cancelLabel="Keep booking"
+        title={t.admin.detail_cancel_title}
+        message={t.admin.detail_cancel_msg}
+        confirmLabel={t.admin.detail_cancel_yes}
+        cancelLabel={t.admin.detail_keep}
         variant="danger"
         busy={busy === "cancel"}
         onConfirm={cancelBooking}

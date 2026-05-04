@@ -18,6 +18,9 @@ import {
   formatKuwaitWeekday,
   kuwaitTodayIso,
 } from "@/lib/time";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, SlotStatus } from "@/lib/types";
 
 type AdminSlot = {
@@ -42,7 +45,14 @@ function rangeDays(fromIso: string): string[] {
   return Array.from({ length: RANGE_DAYS }, (_, i) => plusDaysIso(fromIso, i));
 }
 
+function statusLabel(status: SlotStatus, t: Dict): string {
+  if (status === "open") return t.admin.slots_status_open;
+  if (status === "closed") return t.admin.slots_status_closed;
+  return t.admin.slots_status_booked;
+}
+
 export default function SlotManagerPage() {
+  const t = useDict();
   const { toast } = useToast();
   const [courts, setCourts] = useState<Court[]>([]);
   const [courtId, setCourtId] = useState<string | null>(null);
@@ -57,13 +67,12 @@ export default function SlotManagerPage() {
     | { type: "close" | "open"; date: string; openCount: number; closedCount: number }
   >(null);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [addSlotFor, setAddSlotFor] = useState<string | null>(null); // date
+  const [addSlotFor, setAddSlotFor] = useState<string | null>(null);
   const [addSlotBusy, setAddSlotBusy] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<AdminSlot | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const ensuredRef = useRef(false);
 
-  // Load courts once + ensure slots exist.
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -75,7 +84,7 @@ export default function SlotManagerPage() {
         setCourts(json.courts);
         if (json.courts.length > 0) setCourtId(json.courts[0].id);
       } catch {
-        if (!cancel) toast("Couldn't load courts.", "error");
+        if (!cancel) toast(t.admin.slots_couldnt_load_courts, "error");
       }
     })();
 
@@ -97,12 +106,11 @@ export default function SlotManagerPage() {
     return () => {
       cancel = true;
     };
-  }, [toast]);
+  }, [toast, t.admin.slots_couldnt_load_courts]);
 
   const days = useMemo(() => rangeDays(from), [from]);
   const today = useMemo(() => kuwaitTodayIso(), []);
 
-  // Keep the mobile "active day" inside the visible range.
   useEffect(() => {
     if (!days.includes(activeDay)) setActiveDay(days[0]);
   }, [days, activeDay]);
@@ -120,16 +128,14 @@ export default function SlotManagerPage() {
         const json = (await res.json()) as { slots: AdminSlot[] };
         setSlots(json.slots);
       } catch {
-        toast("Couldn't load slots.", "error");
+        toast(t.admin.slots_couldnt_load, "error");
       } finally {
         setLoading(false);
       }
     },
-    [toast],
+    [toast, t.admin.slots_couldnt_load],
   );
 
-  // Fetch when court / from changes (and after ensure resolves so /ensure
-  // gets a chance to fill in any gaps before the read).
   useEffect(() => {
     if (!courtId || ensureBusy) return;
     void loadSlots(courtId, from);
@@ -138,8 +144,7 @@ export default function SlotManagerPage() {
   const slotsByDay = useMemo(() => {
     const m = new Map<string, AdminSlot[]>(days.map((d) => [d, []]));
     for (const s of slots) {
-      const day = s.start_time.slice(0, 10); // UTC date — works for our 8-22 Kuwait window since 8 KW = 5 UTC same day
-      // More robust: bucket by computing the Kuwait calendar date
+      const day = s.start_time.slice(0, 10);
       const kwHourMs = new Date(s.start_time).getTime() + 3 * 3_600_000;
       const kwDate = new Date(kwHourMs).toISOString().slice(0, 10);
       const bucket = m.get(kwDate) ?? m.get(day);
@@ -152,13 +157,12 @@ export default function SlotManagerPage() {
 
   async function toggleSlot(slot: AdminSlot) {
     if (slot.status === "booked") {
-      toast("Cancel via Bookings to free this slot.", "info");
+      toast(t.admin.slots_cancel_via_bookings, "info");
       return;
     }
     if (pending[slot.id]) return;
 
     const next: SlotStatus = slot.status === "open" ? "closed" : "open";
-    // Optimistic update
     setSlots((prev) =>
       prev.map((s) => (s.id === slot.id ? { ...s, status: next } : s)),
     );
@@ -171,22 +175,21 @@ export default function SlotManagerPage() {
         body: JSON.stringify({ status: next }),
       });
       if (!res.ok) {
-        // Roll back
         setSlots((prev) =>
           prev.map((s) => (s.id === slot.id ? { ...s, status: slot.status } : s)),
         );
         if (res.status === 409) {
-          toast("That slot just got booked. Refreshing.", "error");
+          toast(t.admin.slots_just_booked, "error");
           if (courtId) void loadSlots(courtId, from);
         } else {
-          toast("Couldn't update — try again.", "error");
+          toast(t.admin.slots_couldnt_update, "error");
         }
       }
     } catch {
       setSlots((prev) =>
         prev.map((s) => (s.id === slot.id ? { ...s, status: slot.status } : s)),
       );
-      toast("Network error.", "error");
+      toast(t.common.network_error, "error");
     } finally {
       setPending((p) => {
         const { [slot.id]: _drop, ...rest } = p;
@@ -207,13 +210,10 @@ export default function SlotManagerPage() {
     });
   }
 
-  // ─── Add custom slot ─────────────────────────────────────────────────────
-
   async function addCustomSlot(date: string, hour: number) {
     if (!courtId || addSlotBusy) return;
     if (!Number.isInteger(hour) || hour < 0 || hour > 23) return;
 
-    // Build start/end as UTC ISO that represents the chosen Kuwait wall hour.
     const [y, m, d] = date.split("-").map(Number);
     const startUtcMs = Date.UTC(y, m - 1, d, hour - 3, 0, 0, 0);
     const endUtcMs = startUtcMs + 60 * 60 * 1000;
@@ -228,25 +228,28 @@ export default function SlotManagerPage() {
         body: JSON.stringify({ court_id: courtId, start_time, end_time }),
       });
       if (res.ok) {
-        toast(`Added slot at ${String(hour).padStart(2, "0")}:00.`, "success");
+        toast(
+          format(t.admin.slots_added_at, {
+            time: `${String(hour).padStart(2, "0")}:00`,
+          }),
+          "success",
+        );
         setAddSlotFor(null);
         await loadSlots(courtId, from);
         return;
       }
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (res.status === 409 && json.error === "slot_exists") {
-        toast("That hour already has a slot.", "error");
+        toast(t.admin.slots_already_taken, "error");
       } else {
-        toast("Couldn't add slot — try again.", "error");
+        toast(t.admin.slots_couldnt_add, "error");
       }
     } catch {
-      toast("Network error.", "error");
+      toast(t.common.network_error, "error");
     } finally {
       setAddSlotBusy(false);
     }
   }
-
-  // ─── Delete unused slot ──────────────────────────────────────────────────
 
   async function deleteSlot(slot: AdminSlot) {
     if (deleteBusy) return;
@@ -256,19 +259,19 @@ export default function SlotManagerPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        toast("Slot deleted.", "success");
+        toast(t.admin.slots_deleted, "success");
         setDeleteCandidate(null);
         if (courtId) await loadSlots(courtId, from);
         return;
       }
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (res.status === 409 && json.error === "slot_has_booking") {
-        toast("Can't delete — slot has a booking on it.", "error");
+        toast(t.admin.slots_has_booking, "error");
       } else {
-        toast("Couldn't delete — try again.", "error");
+        toast(t.admin.slots_couldnt_delete, "error");
       }
     } catch {
-      toast("Network error.", "error");
+      toast(t.common.network_error, "error");
     } finally {
       setDeleteBusy(false);
     }
@@ -285,7 +288,7 @@ export default function SlotManagerPage() {
         body: JSON.stringify({ court_id: courtId, date: bulk.date }),
       });
       if (!res.ok) {
-        toast("Bulk action failed — try again.", "error");
+        toast(t.admin.slots_bulk_failed, "error");
         return;
       }
       const json = (await res.json()) as
@@ -294,15 +297,20 @@ export default function SlotManagerPage() {
       const count =
         "closed" in json ? json.closed : "opened" in json ? json.opened : 0;
       const skippedNote = json.skipped.length
-        ? ` (${json.skipped.length} booked left untouched)`
+        ? format(t.admin.slots_skipped, { n: json.skipped.length })
         : "";
-      toast(
-        `${bulk.type === "close" ? "Closed" : "Opened"} ${count} slot${count === 1 ? "" : "s"}${skippedNote}.`,
-        "success",
-      );
+      const tmpl =
+        bulk.type === "close"
+          ? count === 1
+            ? t.admin.slots_closed_n_one
+            : t.admin.slots_closed_n_other
+          : count === 1
+            ? t.admin.slots_opened_n_one
+            : t.admin.slots_opened_n_other;
+      toast(format(tmpl, { n: count, skipped: skippedNote }), "success");
       if (courtId) await loadSlots(courtId, from);
     } catch {
-      toast("Bulk action failed — try again.", "error");
+      toast(t.admin.slots_bulk_failed, "error");
     } finally {
       setBulkBusy(false);
       setBulk(null);
@@ -314,32 +322,47 @@ export default function SlotManagerPage() {
   if (courts.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600">
-        Loading courts…
+        {t.admin.slots_loading}
       </div>
     );
   }
+
+  const bulkMessage = bulk
+    ? bulk.type === "close"
+      ? format(
+          bulk.openCount === 1
+            ? t.admin.slots_close_msg_one
+            : t.admin.slots_close_msg_other,
+          { n: bulk.openCount, date: formatKuwaitFullDate(bulk.date) },
+        )
+      : format(
+          bulk.closedCount === 1
+            ? t.admin.slots_open_msg_one
+            : t.admin.slots_open_msg_other,
+          { n: bulk.closedCount, date: formatKuwaitFullDate(bulk.date) },
+        )
+    : "";
 
   return (
     <section className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Slots</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Open or close court hours. Booked slots are read-only here — cancel via Bookings to free them.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+            {t.admin.slots_title}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">{t.admin.slots_sub}</p>
         </div>
         <button
           type="button"
           onClick={() => courtId && loadSlots(courtId, from)}
           className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          aria-label="Refresh"
+          aria-label={t.common.refresh}
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden />
-          Refresh
+          {t.common.refresh}
         </button>
       </div>
 
-      {/* Toolbar: court selector + week navigator */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 text-sm">
           {courts.map((c) => (
@@ -365,33 +388,32 @@ export default function SlotManagerPage() {
             onClick={() => setFrom(plusDaysIso(from, -7))}
             className="inline-flex h-9 items-center gap-1 rounded-lg px-3 font-medium text-slate-700 hover:bg-slate-50"
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden /> Prev week
+            <ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /> {t.admin.slots_prev_week}
           </button>
           <button
             type="button"
             onClick={() => setFrom(today)}
             className="inline-flex h-9 items-center rounded-lg px-3 font-medium text-slate-700 hover:bg-slate-50"
           >
-            This week
+            {t.admin.slots_this_week}
           </button>
           <button
             type="button"
             onClick={() => setFrom(plusDaysIso(from, 7))}
             className="inline-flex h-9 items-center gap-1 rounded-lg px-3 font-medium text-slate-700 hover:bg-slate-50"
           >
-            Next week <ChevronRight className="h-4 w-4" aria-hidden />
+            {t.admin.slots_next_week} <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden />
           </button>
         </div>
       </div>
 
       {ensureBusy && (
         <p className="text-xs text-slate-500">
-          <Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden />
-          Refreshing schedule…
+          <Loader2 className="me-1 inline h-3 w-3 animate-spin" aria-hidden />
+          {t.admin.slots_refreshing}
         </p>
       )}
 
-      {/* Mobile: date strip + single-day vertical list */}
       <div className="md:hidden">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {days.map((d) => {
@@ -422,6 +444,7 @@ export default function SlotManagerPage() {
           })}
         </div>
         <DayPanel
+          t={t}
           date={activeDay}
           slots={slotsByDay.get(activeDay) ?? []}
           pending={pending}
@@ -432,10 +455,10 @@ export default function SlotManagerPage() {
         />
       </div>
 
-      {/* Desktop: week grid */}
       <div className="hidden grid-cols-7 gap-3 md:grid">
         {days.map((d) => (
           <DayColumn
+            t={t}
             key={d}
             date={d}
             slots={slotsByDay.get(d) ?? []}
@@ -449,24 +472,22 @@ export default function SlotManagerPage() {
         ))}
       </div>
 
-      <Legend />
+      <Legend t={t} />
 
       <ConfirmModal
         open={bulk !== null}
         title={
           bulk?.type === "close"
-            ? "Close all open slots?"
-            : "Open all closed slots?"
+            ? t.admin.slots_close_title
+            : t.admin.slots_open_title
         }
-        message={
-          bulk
-            ? bulk.type === "close"
-              ? `${bulk.openCount} open slot${bulk.openCount === 1 ? "" : "s"} on ${formatKuwaitFullDate(bulk.date)} will be marked unavailable. Booked slots are not affected.`
-              : `${bulk.closedCount} closed slot${bulk.closedCount === 1 ? "" : "s"} on ${formatKuwaitFullDate(bulk.date)} will be reopened. Booked slots are not affected.`
-            : ""
+        message={bulkMessage}
+        confirmLabel={
+          bulk?.type === "close"
+            ? t.admin.slots_close_confirm
+            : t.admin.slots_open_confirm
         }
-        confirmLabel={bulk?.type === "close" ? "Close all" : "Open all"}
-        cancelLabel="Keep as-is"
+        cancelLabel={t.admin.slots_keep}
         variant={bulk?.type === "close" ? "danger" : "default"}
         busy={bulkBusy}
         onConfirm={runBulk}
@@ -474,6 +495,7 @@ export default function SlotManagerPage() {
       />
 
       <AddSlotModal
+        t={t}
         open={addSlotFor !== null}
         date={addSlotFor}
         existingHours={
@@ -494,14 +516,19 @@ export default function SlotManagerPage() {
 
       <ConfirmModal
         open={deleteCandidate !== null}
-        title="Delete this slot?"
+        title={t.admin.slots_delete_title}
         message={
           deleteCandidate
-            ? `${formatKuwaitClock(deleteCandidate.start_time)} on ${formatKuwaitFullDate(deleteCandidate.start_time.slice(0, 10))} will be removed entirely. This is intended for cleaning up custom slots — bookings prevent deletion.`
+            ? format(t.admin.slots_delete_msg, {
+                time: formatKuwaitClock(deleteCandidate.start_time),
+                date: formatKuwaitFullDate(
+                  deleteCandidate.start_time.slice(0, 10),
+                ),
+              })
             : ""
         }
-        confirmLabel="Delete slot"
-        cancelLabel="Keep slot"
+        confirmLabel={t.admin.slots_delete_confirm}
+        cancelLabel={t.admin.slots_delete_keep}
         variant="danger"
         busy={deleteBusy}
         onConfirm={() =>
@@ -516,6 +543,7 @@ export default function SlotManagerPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DayPanel({
+  t,
   date,
   slots,
   pending,
@@ -524,6 +552,7 @@ function DayPanel({
   onAdd,
   onDelete,
 }: {
+  t: Dict;
   date: string;
   slots: AdminSlot[];
   pending: Record<string, boolean>;
@@ -536,14 +565,16 @@ function DayPanel({
   return (
     <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
       <DayHeader
+        t={t}
         date={date}
         counts={counts}
-        onBulk={(t) => onBulk(t, date)}
+        onBulk={(type) => onBulk(type, date)}
         onAdd={() => onAdd(date)}
       />
       <div className="mt-3 grid grid-cols-3 gap-2">
         {slots.map((s) => (
           <SlotCell
+            t={t}
             key={s.id}
             slot={s}
             pending={!!pending[s.id]}
@@ -557,6 +588,7 @@ function DayPanel({
 }
 
 function DayColumn({
+  t,
   date,
   slots,
   pending,
@@ -566,6 +598,7 @@ function DayColumn({
   onDelete,
   isToday,
 }: {
+  t: Dict;
   date: string;
   slots: AdminSlot[];
   pending: Record<string, boolean>;
@@ -581,15 +614,17 @@ function DayColumn({
       className={`rounded-2xl border bg-white p-2 ${isToday ? "border-slate-800" : "border-slate-200"}`}
     >
       <DayHeader
+        t={t}
         date={date}
         counts={counts}
-        onBulk={(t) => onBulk(t, date)}
+        onBulk={(type) => onBulk(type, date)}
         onAdd={() => onAdd(date)}
         compact
       />
       <div className="mt-2 grid grid-cols-1 gap-1.5">
         {slots.map((s) => (
           <SlotCell
+            t={t}
             key={s.id}
             slot={s}
             pending={!!pending[s.id]}
@@ -603,12 +638,14 @@ function DayColumn({
 }
 
 function DayHeader({
+  t,
   date,
   counts,
   onBulk,
   onAdd,
   compact = false,
 }: {
+  t: Dict;
   date: string;
   counts: { open: number; closed: number; booked: number };
   onBulk: (type: "close" | "open") => void;
@@ -625,7 +662,11 @@ function DayHeader({
           <span className="text-slate-500">{formatKuwaitDayOfMonth(date)}</span>
         </p>
         <p className="text-[10px] text-slate-500">
-          {counts.booked}b · {counts.open}o · {counts.closed}c
+          {format(t.admin.slots_b_o_c, {
+            b: counts.booked,
+            o: counts.open,
+            c: counts.closed,
+          })}
         </p>
       </div>
       <div className="mt-1 flex gap-1">
@@ -635,7 +676,7 @@ function DayHeader({
           disabled={counts.open === 0}
           className="inline-flex h-7 flex-1 items-center justify-center rounded-md border border-slate-300 bg-white text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Close all
+          {t.admin.slots_close_all}
         </button>
         <button
           type="button"
@@ -643,12 +684,12 @@ function DayHeader({
           disabled={counts.closed === 0}
           className="inline-flex h-7 flex-1 items-center justify-center rounded-md border border-slate-300 bg-white text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Open all
+          {t.admin.slots_open_all}
         </button>
         <button
           type="button"
           onClick={onAdd}
-          aria-label="Add slot"
+          aria-label={t.admin.slots_add_aria}
           className="inline-flex h-7 items-center justify-center rounded-md border border-slate-300 bg-white px-2 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -659,11 +700,13 @@ function DayHeader({
 }
 
 function SlotCell({
+  t,
   slot,
   pending,
   onToggle,
   onDelete,
 }: {
+  t: Dict;
   slot: AdminSlot;
   pending: boolean;
   onToggle: () => void;
@@ -678,14 +721,16 @@ function SlotCell({
       <span
         title={
           slot.booking
-            ? `Booked — ${slot.booking.customer_name} (${slot.booking.reference})`
-            : "Booked"
+            ? `${t.admin.slots_status_booked} — ${slot.booking.customer_name} (${slot.booking.reference})`
+            : t.admin.slots_status_booked
         }
         className={`${base} cursor-not-allowed border-red-200 bg-red-50 text-red-800`}
       >
-        <span className="font-mono font-semibold">{time}</span>
+        <span className="font-mono font-semibold" dir="ltr">
+          {time}
+        </span>
         <span className="truncate text-[10px] text-red-700">
-          {slot.booking?.customer_name?.split(" ")[0] ?? "Booked"}
+          {slot.booking?.customer_name?.split(" ")[0] ?? t.admin.slots_status_booked}
         </span>
       </span>
     );
@@ -702,12 +747,17 @@ function SlotCell({
         type="button"
         onClick={onToggle}
         disabled={pending}
-        aria-label={`${time} — ${slot.status} (tap to flip)`}
+        aria-label={format(t.admin.slots_status_label, {
+          time,
+          status: statusLabel(slot.status, t),
+        })}
         className={`${base} ${cls} ${pending ? "opacity-60" : ""} w-full`}
       >
-        <span className="font-mono font-semibold">{time}</span>
+        <span className="font-mono font-semibold" dir="ltr">
+          {time}
+        </span>
         <span className="text-[10px] uppercase tracking-wider">
-          {slot.status}
+          {statusLabel(slot.status, t)}
         </span>
       </button>
       <button
@@ -716,9 +766,9 @@ function SlotCell({
           e.stopPropagation();
           onDelete();
         }}
-        title="Delete slot"
-        aria-label={`Delete ${time} slot`}
-        className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-md bg-white/80 text-slate-500 opacity-0 ring-1 ring-slate-300 transition-opacity hover:bg-white hover:text-red-600 group-hover:opacity-100 focus-visible:opacity-100"
+        title={t.common.delete}
+        aria-label={format(t.admin.slots_delete_label, { time })}
+        className="absolute end-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-md bg-white/80 text-slate-500 opacity-0 ring-1 ring-slate-300 transition-opacity hover:bg-white hover:text-red-600 group-hover:opacity-100 focus-visible:opacity-100"
       >
         <Trash2 className="h-3 w-3" aria-hidden />
       </button>
@@ -726,12 +776,12 @@ function SlotCell({
   );
 }
 
-function Legend() {
+function Legend({ t }: { t: Dict }) {
   return (
     <div className="flex flex-wrap gap-3 text-xs text-slate-600">
-      <LegendDot className="bg-emerald-500" label="Open" />
-      <LegendDot className="bg-slate-400" label="Closed" />
-      <LegendDot className="bg-red-400" label="Booked (read-only)" />
+      <LegendDot className="bg-emerald-500" label={t.admin.slots_legend_open} />
+      <LegendDot className="bg-slate-400" label={t.admin.slots_legend_closed} />
+      <LegendDot className="bg-red-400" label={t.admin.slots_legend_booked} />
     </div>
   );
 }
@@ -758,6 +808,7 @@ function countByStatus(slots: AdminSlot[]) {
 }
 
 function AddSlotModal({
+  t,
   open,
   date,
   existingHours,
@@ -765,6 +816,7 @@ function AddSlotModal({
   onConfirm,
   onCancel,
 }: {
+  t: Dict;
   open: boolean;
   date: string | null;
   existingHours: Set<number>;
@@ -772,7 +824,6 @@ function AddSlotModal({
   onConfirm: (hour: number) => void;
   onCancel: () => void;
 }) {
-  // First hour 0-23 not already taken; default to 23 if all defaults are filled.
   const initialHour = (() => {
     for (let h = 23; h >= 0; h--) {
       if (!existingHours.has(h)) return h;
@@ -804,19 +855,21 @@ function AddSlotModal({
     >
       <button
         type="button"
-        aria-label="Cancel"
+        aria-label={t.common.cancel}
         onClick={() => (busy ? null : onCancel())}
         className="absolute inset-0 h-full w-full cursor-default bg-slate-900/60"
       />
       <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200">
         <h2 className="text-lg font-semibold text-slate-900">
-          Add a slot on {formatKuwaitFullDate(date)}
+          {format(t.admin.slots_add_title, {
+            date: formatKuwaitFullDate(date),
+          })}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Pick a Kuwait hour. The new slot will be 60 minutes, status open.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t.admin.slots_add_sub}</p>
         <label className="mt-4 block">
-          <span className="text-sm font-medium text-slate-900">Start hour</span>
+          <span className="text-sm font-medium text-slate-900">
+            {t.admin.slots_start_hour}
+          </span>
           <select
             value={hour}
             onChange={(e) => setHour(Number(e.target.value))}
@@ -825,15 +878,13 @@ function AddSlotModal({
             {Array.from({ length: 24 }, (_, h) => h).map((h) => (
               <option key={h} value={h} disabled={existingHours.has(h)}>
                 {String(h).padStart(2, "0")}:00
-                {existingHours.has(h) ? " (taken)" : ""}
+                {existingHours.has(h) ? t.admin.slots_taken_suffix : ""}
               </option>
             ))}
           </select>
         </label>
         {taken ? (
-          <p className="mt-2 text-xs text-red-600">
-            This hour already has a slot. Pick another.
-          </p>
+          <p className="mt-2 text-xs text-red-600">{t.admin.slots_already_msg}</p>
         ) : null}
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
@@ -842,7 +893,7 @@ function AddSlotModal({
             disabled={busy}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            Cancel
+            {t.common.cancel}
           </button>
           <button
             type="button"
@@ -852,10 +903,10 @@ function AddSlotModal({
           >
             {busy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Adding…
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t.admin.slots_adding}
               </>
             ) : (
-              "Add slot"
+              t.admin.slots_add
             )}
           </button>
         </div>
@@ -863,4 +914,3 @@ function AddSlotModal({
     </div>
   );
 }
-

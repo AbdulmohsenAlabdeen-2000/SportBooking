@@ -9,14 +9,18 @@ import {
   type FormEvent,
 } from "react";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import { useDict } from "@/lib/i18n/client";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, BookingStatus } from "@/lib/types";
 
-const STATUS_PILLS: { value: BookingStatus | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
+function statusPills(t: Dict): { value: BookingStatus | "all"; label: string }[] {
+  return [
+    { value: "all", label: t.admin.bookings_status_all },
+    { value: "confirmed", label: t.admin.bookings_status_confirmed },
+    { value: "completed", label: t.admin.bookings_status_completed },
+    { value: "cancelled", label: t.admin.bookings_status_cancelled },
+  ];
+}
 
 type Filters = {
   from: string;
@@ -33,6 +37,7 @@ export function BookingsFilters({
   initial: Filters;
   courts: { id: string; name: string }[];
 }) {
+  const t = useDict();
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -44,7 +49,6 @@ export function BookingsFilters({
   const [status, setStatus] = useState<BookingStatus | "all">(initial.status);
   const [q, setQ] = useState(initial.q);
 
-  // Re-sync local state if URL changes (e.g. browser back).
   useEffect(() => {
     setFrom(sp.get("from") ?? initial.from);
     setTo(sp.get("to") ?? initial.to);
@@ -94,28 +98,27 @@ export function BookingsFilters({
   return (
     <section className="rounded-2xl border border-slate-200 bg-white">
       <form onSubmit={onSubmit} className="space-y-3 p-3 md:p-4">
-        {/* Search always visible */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
               aria-hidden
             />
             <input
               type="search"
-              placeholder="Search reference, name, phone…"
+              placeholder={t.admin.bookings_search_placeholder}
               value={q}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 setQ(e.target.value)
               }
-              className="block h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-500"
+              className="block h-10 w-full rounded-lg border border-slate-300 bg-white ps-9 pe-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-500"
             />
           </div>
           <button
             type="submit"
             className="inline-flex h-10 items-center rounded-lg bg-slate-800 px-3 text-sm font-medium text-white hover:bg-slate-700"
           >
-            Search
+            {t.admin.bookings_search}
           </button>
           <button
             type="button"
@@ -123,7 +126,7 @@ export function BookingsFilters({
             aria-expanded={open}
             className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 md:hidden"
           >
-            Filters
+            {t.admin.bookings_filters}
             {open ? (
               <ChevronUp className="h-4 w-4" aria-hidden />
             ) : (
@@ -132,9 +135,8 @@ export function BookingsFilters({
           </button>
         </div>
 
-        {/* Status pills */}
         <div className="flex flex-wrap gap-2">
-          {STATUS_PILLS.map((p) => (
+          {statusPills(t).map((p) => (
             <button
               type="button"
               key={p.value}
@@ -151,12 +153,11 @@ export function BookingsFilters({
           ))}
         </div>
 
-        {/* Date + court — always visible on md+, accordion on mobile */}
         <div
           className={`grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 ${open ? "" : "hidden md:grid"}`}
         >
           <label className="text-xs font-medium text-slate-600">
-            From
+            {t.admin.bookings_from}
             <input
               type="date"
               value={from}
@@ -165,7 +166,7 @@ export function BookingsFilters({
             />
           </label>
           <label className="text-xs font-medium text-slate-600">
-            To
+            {t.admin.bookings_to}
             <input
               type="date"
               value={to}
@@ -174,13 +175,13 @@ export function BookingsFilters({
             />
           </label>
           <label className="text-xs font-medium text-slate-600">
-            Court
+            {t.admin.bookings_court}
             <select
               value={courtId}
               onChange={(e) => setCourtId(e.target.value)}
               className="mt-1 block h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-slate-500"
             >
-              <option value="">All courts</option>
+              <option value="">{t.admin.bookings_all_courts}</option>
               {courts.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -196,13 +197,13 @@ export function BookingsFilters({
             onClick={reset}
             className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900"
           >
-            <X className="h-3.5 w-3.5" aria-hidden /> Reset
+            <X className="h-3.5 w-3.5" aria-hidden /> {t.admin.bookings_reset}
           </button>
           <button
             type="submit"
             className="inline-flex h-10 items-center rounded-lg bg-slate-800 px-4 text-sm font-medium text-white hover:bg-slate-700 md:hidden"
           >
-            Apply
+            {t.admin.bookings_apply}
           </button>
         </div>
       </form>

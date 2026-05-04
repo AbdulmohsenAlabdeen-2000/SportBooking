@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/browser";
+import { useDict } from "@/lib/i18n/client";
 
 export function SignOutButton({ className = "" }: { className?: string }) {
+  const t = useDict();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +35,7 @@ export function SignOutButton({ className = "" }: { className?: string }) {
       ].join(" ")}
     >
       <LogOut className="h-4 w-4" aria-hidden />
-      <span>{busy ? "Signing out…" : "Sign out"}</span>
+      <span>{busy ? t.admin.signing_out : t.admin.sign_out}</span>
     </button>
   );
 }

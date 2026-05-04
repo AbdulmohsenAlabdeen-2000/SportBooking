@@ -15,6 +15,9 @@ import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { CourtForm } from "@/components/admin/CourtForm";
 import { formatKwd } from "@/lib/time";
+import { useDict } from "@/lib/i18n/client";
+import { format } from "@/lib/i18n/shared";
+import type { Dict } from "@/lib/i18n/dict.en";
 import type { Court, Sport } from "@/lib/types";
 
 const SPORT_ICON: Record<Sport, LucideIcon> = {
@@ -23,9 +26,16 @@ const SPORT_ICON: Record<Sport, LucideIcon> = {
   football: LandPlot,
 };
 
+function sportLabel(sport: Sport, t: Dict): string {
+  if (sport === "padel") return t.hero.pill_padel;
+  if (sport === "tennis") return t.hero.pill_tennis;
+  return t.hero.pill_football;
+}
+
 type AdminCourt = Court & { is_active: boolean; created_at?: string };
 
 export function CourtsManager() {
+  const t = useDict();
   const { toast } = useToast();
   const [courts, setCourts] = useState<AdminCourt[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,7 +57,7 @@ export function CourtsManager() {
       const json = (await res.json()) as { courts: AdminCourt[] };
       setCourts(json.courts);
     } catch {
-      toast("Couldn't load courts.", "error");
+      toast(t.admin.courts_err_load, "error");
     } finally {
       setLoading(false);
     }
@@ -72,10 +82,10 @@ export function CourtsManager() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(String(res.status));
-      toast(`Deactivated ${court.name}.`, "success");
+      toast(format(t.admin.courts_deactivated, { name: court.name }), "success");
       await load();
     } catch {
-      toast("Couldn't deactivate — try again.", "error");
+      toast(t.admin.courts_err_deactivate, "error");
     } finally {
       setBusyId(null);
       setConfirmDeactivate(null);
@@ -92,10 +102,10 @@ export function CourtsManager() {
         body: JSON.stringify({ is_active: true }),
       });
       if (!res.ok) throw new Error(String(res.status));
-      toast(`Reactivated ${court.name}.`, "success");
+      toast(format(t.admin.courts_reactivated, { name: court.name }), "success");
       await load();
     } catch {
-      toast("Couldn't reactivate — try again.", "error");
+      toast(t.admin.courts_err_reactivate, "error");
     } finally {
       setBusyId(null);
     }
@@ -105,31 +115,30 @@ export function CourtsManager() {
     <section className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Courts</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Add new courts, edit existing ones, deactivate without losing
-            booking history.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+            {t.admin.courts_title}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">{t.admin.courts_sub}</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => void load()}
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            aria-label="Refresh"
+            aria-label={t.common.refresh}
           >
             <RefreshCw
               className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
               aria-hidden
             />
-            Refresh
+            {t.common.refresh}
           </button>
           <button
             type="button"
             onClick={() => setFormOpen({ mode: "create" })}
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-800 px-3 text-sm font-semibold text-white hover:bg-slate-700"
           >
-            <PlusCircle className="h-4 w-4" aria-hidden /> Add court
+            <PlusCircle className="h-4 w-4" aria-hidden /> {t.admin.courts_add}
           </button>
         </div>
       </div>
@@ -138,7 +147,9 @@ export function CourtsManager() {
         <SkeletonList />
       ) : courts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          No courts yet. Click <strong>Add court</strong> to create your first one.
+          {t.admin.courts_empty_part1}
+          <strong>{t.admin.courts_empty_strong}</strong>
+          {t.admin.courts_empty_part2}
         </div>
       ) : (
         <ul className="space-y-2">
@@ -163,7 +174,7 @@ export function CourtsManager() {
                         {c.name}
                       </p>
                       <span className="text-xs font-semibold uppercase tracking-wider text-brand">
-                        {c.sport}
+                        {sportLabel(c.sport, t)}
                       </span>
                       <span
                         className={[
@@ -173,13 +184,15 @@ export function CourtsManager() {
                             : "bg-slate-200 text-slate-600",
                         ].join(" ")}
                       >
-                        {c.is_active ? "Active" : "Inactive"}
+                        {c.is_active ? t.admin.courts_active : t.admin.courts_inactive}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-slate-600">
-                      Up to {c.capacity} ·{" "}
-                      {formatKwd(Number(c.price_per_slot))} /{" "}
-                      {c.slot_duration_minutes} min
+                      {format(t.admin.courts_capacity_line, {
+                        capacity: c.capacity,
+                        price: formatKwd(Number(c.price_per_slot)),
+                        minutes: c.slot_duration_minutes,
+                      })}
                     </p>
                     {c.description ? (
                       <p className="mt-1 line-clamp-2 text-xs text-slate-500">
@@ -193,7 +206,7 @@ export function CourtsManager() {
                       onClick={() => setFormOpen({ mode: "edit", court: c })}
                       className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+                      <Pencil className="h-3.5 w-3.5" aria-hidden /> {t.admin.courts_edit}
                     </button>
                     {c.is_active ? (
                       <button
@@ -202,7 +215,7 @@ export function CourtsManager() {
                         disabled={busyId === c.id}
                         className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                       >
-                        <Power className="h-3.5 w-3.5" aria-hidden /> Deactivate
+                        <Power className="h-3.5 w-3.5" aria-hidden /> {t.admin.courts_deactivate}
                       </button>
                     ) : (
                       <button
@@ -211,7 +224,7 @@ export function CourtsManager() {
                         disabled={busyId === c.id}
                         className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
                       >
-                        <Power className="h-3.5 w-3.5" aria-hidden /> Reactivate
+                        <Power className="h-3.5 w-3.5" aria-hidden /> {t.admin.courts_reactivate}
                       </button>
                     )}
                   </div>
@@ -229,17 +242,21 @@ export function CourtsManager() {
         onClose={() => setFormOpen(null)}
         onSaved={() =>
           handleSaved(
-            formOpen?.mode === "edit" ? "Court updated." : "Court created.",
+            formOpen?.mode === "edit"
+              ? t.admin.court_form_updated
+              : t.admin.court_form_created,
           )
         }
       />
 
       <ConfirmModal
         open={confirmDeactivate !== null}
-        title="Deactivate this court?"
-        message={`${confirmDeactivate?.name ?? ""} will be hidden from customers and stop accepting new bookings. Existing bookings keep their references and remain visible in the admin panel. You can reactivate any time.`}
-        confirmLabel="Yes, deactivate"
-        cancelLabel="Keep active"
+        title={t.admin.courts_deactivate_title}
+        message={format(t.admin.courts_deactivate_msg, {
+          name: confirmDeactivate?.name ?? "",
+        })}
+        confirmLabel={t.admin.courts_deactivate_yes}
+        cancelLabel={t.admin.courts_deactivate_keep}
         variant="danger"
         busy={busyId === confirmDeactivate?.id}
         onConfirm={() =>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useDict } from "@/lib/i18n/client";
 
 export type ConfirmModalProps = {
   open: boolean;
@@ -18,16 +19,16 @@ export function ConfirmModal({
   open,
   title,
   message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   variant = "default",
   busy = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const t = useDict();
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
-  // Lock scroll + bind Escape while open.
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -36,7 +37,6 @@ export function ConfirmModal({
       if (e.key === "Escape" && !busy) onCancel();
     }
     window.addEventListener("keydown", onKey);
-    // Move focus into the dialog for screen-reader users.
     dialogRef.current?.focus();
     return () => {
       document.body.style.overflow = prev;
@@ -60,7 +60,7 @@ export function ConfirmModal({
     >
       <button
         type="button"
-        aria-label="Cancel"
+        aria-label={t.common.cancel}
         onClick={() => (busy ? null : onCancel())}
         className="absolute inset-0 h-full w-full cursor-default bg-slate-900/60"
       />
@@ -80,7 +80,7 @@ export function ConfirmModal({
             disabled={busy}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-60"
           >
-            {cancelLabel}
+            {cancelLabel ?? t.common.cancel}
           </button>
           <button
             type="button"
@@ -88,7 +88,9 @@ export function ConfirmModal({
             disabled={busy}
             className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 ${confirmCls}`}
           >
-            {busy ? "Working…" : confirmLabel}
+            {busy
+              ? t.admin.confirm_working
+              : (confirmLabel ?? t.common.confirm)}
           </button>
         </div>
       </div>
