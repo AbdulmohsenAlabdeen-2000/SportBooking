@@ -325,6 +325,7 @@ export const ar: Dict = {
     confirmed: "المؤكّدة",
     completed: "المكتملة",
     revenue_today: "إيرادات اليوم",
+    revenue_total: "إجمالي الإيرادات",
     todays_bookings_h: "حجوزات اليوم",
     todays_bookings_empty: "لا توجد حجوزات اليوم بعد. تحقّق لاحقاً.",
     view_all_bookings: "عرض كل الحجوزات",

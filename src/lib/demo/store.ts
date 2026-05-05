@@ -177,6 +177,10 @@ export function getBookingByReference(reference: string): Booking | null {
   return getStore().bookings.find((b) => b.reference === reference) ?? null;
 }
 
+export function listAllBookings(): Booking[] {
+  return getStore().bookings;
+}
+
 export function getSlotById(id: string): Slot | null {
   return getStore().slots.find((s) => s.id === id) ?? null;
 }

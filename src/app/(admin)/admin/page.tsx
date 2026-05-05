@@ -56,6 +56,8 @@ type WeekResponse = {
   }[];
 };
 
+type TotalResponse = { revenue_kwd: number };
+
 function getBaseUrl() {
   const h = headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -67,6 +69,7 @@ function getBaseUrl() {
 async function loadDashboard(): Promise<{
   today: TodayResponse | null;
   week: WeekResponse | null;
+  total: TotalResponse | null;
 }> {
   const cookie = headers().get("cookie") ?? "";
   const init: RequestInit = {
@@ -74,22 +77,25 @@ async function loadDashboard(): Promise<{
     headers: { cookie },
   };
   const base = getBaseUrl();
-  const [todayRes, weekRes] = await Promise.all([
+  const [todayRes, weekRes, totalRes] = await Promise.all([
     fetch(`${base}/api/admin/bookings/today`, init).catch(() => null),
     fetch(`${base}/api/admin/stats/week`, init).catch(() => null),
+    fetch(`${base}/api/admin/stats/total`, init).catch(() => null),
   ]);
 
   const today =
     todayRes && todayRes.ok ? ((await todayRes.json()) as TodayResponse) : null;
   const week =
     weekRes && weekRes.ok ? ((await weekRes.json()) as WeekResponse) : null;
-  return { today, week };
+  const total =
+    totalRes && totalRes.ok ? ((await totalRes.json()) as TotalResponse) : null;
+  return { today, week, total };
 }
 
 export default async function AdminDashboardPage() {
   const t = getDict();
   const user = await requireAdmin();
-  const { today, week } = await loadDashboard();
+  const { today, week, total } = await loadDashboard();
   const todayIso = today?.date ?? kuwaitTodayIso();
 
   return (
@@ -107,7 +113,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {today ? (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           <StatCard label={t.admin.todays_bookings} value={today.stats.total} />
           <StatCard
             label={t.admin.confirmed}
@@ -123,6 +129,11 @@ export default async function AdminDashboardPage() {
             label={t.admin.revenue_today}
             value={formatKwd(today.stats.revenue_kwd)}
             tone="slate"
+          />
+          <StatCard
+            label={t.admin.revenue_total}
+            value={total ? formatKwd(total.revenue_kwd) : "—"}
+            tone="emerald"
           />
         </div>
       ) : (

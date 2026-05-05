@@ -323,6 +323,7 @@ export const en = {
     confirmed: "Confirmed",
     completed: "Completed",
     revenue_today: "Revenue today",
+    revenue_total: "Total revenue",
     todays_bookings_h: "Today's Bookings",
     todays_bookings_empty: "No bookings today yet. Check back later.",
     view_all_bookings: "View all bookings",
