@@ -593,6 +593,9 @@ export const en = {
     payment_id: "Payment ID",
     transaction_id: "Transaction ID",
     reference_id: "Reference ID",
+    toggle: "Transaction details",
+    loading: "Loading transaction details…",
+    unavailable: "No transaction details available for this booking.",
   },
   chat: {
     title: "Smash Courts Help",

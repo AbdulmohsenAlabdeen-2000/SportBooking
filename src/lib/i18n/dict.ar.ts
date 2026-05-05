@@ -596,6 +596,9 @@ export const ar: Dict = {
     payment_id: "رقم الدفع",
     transaction_id: "رقم المعاملة",
     reference_id: "الرقم المرجعي",
+    toggle: "تفاصيل المعاملة",
+    loading: "جارٍ تحميل تفاصيل المعاملة…",
+    unavailable: "لا تتوفر تفاصيل معاملة لهذا الحجز.",
   },
   chat: {
     title: "مساعدة سماش كورتس",

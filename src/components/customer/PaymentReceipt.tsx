@@ -1,6 +1,8 @@
+"use client";
+
 import { CheckCircle2, XCircle } from "lucide-react";
 import { formatKuwaitDateTime, formatKwd } from "@/lib/time";
-import { getDict } from "@/lib/i18n";
+import { useDict } from "@/lib/i18n/client";
 
 // Receipt block rendered on both the success-confirmation page and the
 // payment-result failed page. Surfaces the gateway-level identifiers
@@ -24,7 +26,7 @@ export function PaymentReceipt({
   transaction: ReceiptTransaction;
   variant: "success" | "failed";
 }) {
-  const t = getDict();
+  const t = useDict();
   const r = t.receipt;
   const isSuccess = variant === "success";
 

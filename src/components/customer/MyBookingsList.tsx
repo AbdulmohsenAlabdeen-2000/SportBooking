@@ -3,11 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CalendarOff, CreditCard, Loader2, Star, XCircle } from "lucide-react";
+import {
+  CalendarOff,
+  ChevronDown,
+  ChevronUp,
+  CreditCard,
+  Loader2,
+  Receipt,
+  Star,
+  XCircle,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import { ReviewModal } from "@/components/customer/ReviewModal";
+import {
+  PaymentReceipt,
+  type ReceiptTransaction,
+} from "@/components/customer/PaymentReceipt";
 import {
   formatKuwaitFullDate,
   formatKuwaitTimeRange,
@@ -219,6 +232,40 @@ function BookingCard({
     booking.status !== "cancelled" &&
     booking.review === null;
 
+  // Lazy-load gateway transaction details (PaymentId / TransactionId /
+  // ReferenceId) only when the customer expands the row. Avoids firing
+  // one MyFatoorah API call per booking on every /me render.
+  const hasReceipt =
+    booking.status === "confirmed" ||
+    booking.status === "completed" ||
+    booking.status === "cancelled";
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receipt, setReceipt] = useState<ReceiptTransaction | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+
+  async function toggleReceipt() {
+    if (receiptOpen) {
+      setReceiptOpen(false);
+      return;
+    }
+    setReceiptOpen(true);
+    if (receipt || receiptLoading) return;
+    setReceiptLoading(true);
+    setReceiptError(null);
+    try {
+      const res = await fetch(`/api/bookings/${booking.reference}/receipt`);
+      if (!res.ok) throw new Error(String(res.status));
+      const json = (await res.json()) as { transaction: ReceiptTransaction | null };
+      setReceipt(json.transaction);
+      if (!json.transaction) setReceiptError(t.receipt.unavailable);
+    } catch {
+      setReceiptError(t.receipt.unavailable);
+    } finally {
+      setReceiptLoading(false);
+    }
+  }
+
   return (
     <li>
       <Card>
@@ -304,6 +351,45 @@ function BookingCard({
             ) : null}
           </div>
         )}
+        {hasReceipt ? (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => void toggleReceipt()}
+              aria-expanded={receiptOpen}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900"
+            >
+              <Receipt className="h-3.5 w-3.5" aria-hidden />
+              {t.receipt.toggle}
+              {receiptOpen ? (
+                <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              )}
+            </button>
+            {receiptOpen ? (
+              <div className="mt-3">
+                {receiptLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    {t.receipt.loading}
+                  </div>
+                ) : receipt ? (
+                  <PaymentReceipt
+                    transaction={receipt}
+                    variant={
+                      booking.status === "cancelled" ? "failed" : "success"
+                    }
+                  />
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    {receiptError ?? t.receipt.unavailable}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
     </li>
   );
