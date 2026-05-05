@@ -53,9 +53,13 @@ export default async function PaymentResultPage({
   const supabase = createServerClient();
   const { data: booking } = await supabase
     .from("bookings")
-    .select("status, payment_invoice_id")
+    .select("status, payment_invoice_id, slot_id")
     .eq("reference", reference)
-    .maybeSingle<{ status: string; payment_invoice_id: string | null }>();
+    .maybeSingle<{
+      status: string;
+      payment_invoice_id: string | null;
+      slot_id: string | null;
+    }>();
 
   if (!booking) {
     return (
@@ -99,6 +103,24 @@ export default async function PaymentResultPage({
   }
 
   if (live === "failed") {
+    // Webhooks aren't reliable for failed/abandoned payments — MyFatoorah
+    // sometimes doesn't fire one. Release the slot here so it doesn't
+    // stay reserved. Guard on pending_payment so we never downgrade an
+    // already-confirmed booking that raced with a late webhook.
+    if (booking.status === "pending_payment") {
+      await supabase
+        .from("bookings")
+        .update({ status: "cancelled" })
+        .eq("reference", reference)
+        .eq("status", "pending_payment");
+      if (booking.slot_id) {
+        await supabase
+          .from("slots")
+          .update({ status: "open" })
+          .eq("id", booking.slot_id);
+      }
+    }
+
     return (
       <Container className="py-10 md:py-14">
         <Card className="mx-auto max-w-md text-center">
