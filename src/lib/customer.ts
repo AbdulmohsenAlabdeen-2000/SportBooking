@@ -18,10 +18,12 @@ export async function requireCustomer(
   redirectTo = "/login",
 ): Promise<CustomerProfile> {
   if (isDemoMode()) {
+    // Synthetic Kuwait number that intentionally doesn't dial — the
+    // 0000-0000 local part is reserved-feeling and won't reach anyone.
     return {
       user_id: "demo-customer",
       name: "Demo Customer",
-      phone: "+96594490924",
+      phone: "+96500000000",
       created_at: new Date().toISOString(),
     };
   }
