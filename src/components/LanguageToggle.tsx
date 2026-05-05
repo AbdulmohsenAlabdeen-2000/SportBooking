@@ -20,7 +20,13 @@ export function LanguageToggle({
 
   function setLocale(next: Locale) {
     if (next === current) return;
-    document.cookie = `${LOCALE_COOKIE}=${next}; max-age=31536000; path=/; samesite=lax`;
+    // `secure` so the cookie only travels over HTTPS in production; on
+    // localhost (no HTTPS) it would silently be rejected, so gate it.
+    const secure =
+      typeof window !== "undefined" && window.location.protocol === "https:"
+        ? "; secure"
+        : "";
+    document.cookie = `${LOCALE_COOKIE}=${next}; max-age=31536000; path=/; samesite=lax${secure}`;
     // refresh() makes the Server Components re-read the cookie. push()
     // would just be a soft RSC navigation — refresh() also re-runs the
     // root layout which is what flips dir/lang.

@@ -28,6 +28,11 @@ export const dynamic = "force-dynamic";
 const MAX_REFERENCE_RETRIES = 3;
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
+// Per-phone bucket. Stricter than the IP cap because a single attacker
+// can rotate IPs (Tor, residential proxies) but not freely rotate
+// phones, and a real human almost never books > 3 slots in 30 minutes.
+const PHONE_RATE_LIMIT = 5;
+const PHONE_RATE_WINDOW_MS = 30 * 60_000;
 
 function getBaseUrl(): string {
   const h = headers();
@@ -70,6 +75,31 @@ export async function POST(req: Request) {
     );
   }
   const input = parsed.value;
+
+  // Per-phone rate limit (after phone normalization). Catches the
+  // "rotate IPs but reuse same phone to spam-book" abuse pattern that
+  // the IP-only limit above misses.
+  if (!isLoopback(ip)) {
+    const phoneRl = rateLimit(
+      `POST:/api/bookings:phone:${input.customer_phone}`,
+      PHONE_RATE_LIMIT,
+      PHONE_RATE_WINDOW_MS,
+    );
+    if (!phoneRl.ok) {
+      return NextResponse.json(
+        { error: "rate_limited" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.max(
+              1,
+              Math.ceil((phoneRl.resetAt - Date.now()) / 1000),
+            ).toString(),
+          },
+        },
+      );
+    }
+  }
 
   const cookieLocale = cookies().get(LOCALE_COOKIE)?.value;
   const locale = isSupportedLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
