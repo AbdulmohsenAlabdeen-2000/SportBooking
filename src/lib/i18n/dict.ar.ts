@@ -340,6 +340,8 @@ export const ar: Dict = {
     chart_no_data: "لا توجد بيانات حجوزات بعد.",
     chart_bookings_one: "{n} حجز",
     chart_bookings_other: "{n} حجوزات",
+    chart_confirmed: "مؤكد",
+    chart_cancelled: "ملغى",
     nav_dashboard: "لوحة التحكم",
     nav_bookings: "الحجوزات",
     nav_slots: "المواعيد",

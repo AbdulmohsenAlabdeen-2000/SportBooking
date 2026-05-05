@@ -47,7 +47,13 @@ type TodayResponse = {
 };
 
 type WeekResponse = {
-  days: { date: string; bookings: number; revenue_kwd: number }[];
+  days: {
+    date: string;
+    confirmed: number;
+    cancelled: number;
+    bookings: number;
+    revenue_kwd: number;
+  }[];
 };
 
 function getBaseUrl() {

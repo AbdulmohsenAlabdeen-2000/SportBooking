@@ -338,6 +338,8 @@ export const en = {
     chart_no_data: "No bookings data yet.",
     chart_bookings_one: "{n} booking",
     chart_bookings_other: "{n} bookings",
+    chart_confirmed: "Confirmed",
+    chart_cancelled: "Cancelled",
     nav_dashboard: "Dashboard",
     nav_bookings: "Bookings",
     nav_slots: "Slots",
