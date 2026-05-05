@@ -166,9 +166,12 @@ export type PaymentStatusData = {
   InvoiceTransactions: Array<{
     TransactionId: string;
     PaymentId: string;
+    ReferenceId: string | null;
+    TrackId: string | null;
     PaymentGateway: string;
     TransactionStatus: string;
     TransactionStatusCode: string | null;
+    TransactionDate: string | null;
     Error: string | null;
     ErrorCode: string | null;
   }>;

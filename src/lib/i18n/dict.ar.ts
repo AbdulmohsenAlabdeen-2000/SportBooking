@@ -587,6 +587,16 @@ export const ar: Dict = {
     refunded: "مُسترد",
     pay_now: "ادفع الآن",
   },
+  receipt: {
+    title: "تفاصيل المعاملة",
+    status: "الحالة",
+    amount: "المبلغ",
+    datetime: "التاريخ والوقت",
+    gateway: "بوابة الدفع",
+    payment_id: "رقم الدفع",
+    transaction_id: "رقم المعاملة",
+    reference_id: "الرقم المرجعي",
+  },
   chat: {
     title: "مساعدة سماش كورتس",
     subtitle: "مساعد ذكي",

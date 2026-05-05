@@ -95,6 +95,27 @@ export function formatKwd(amount: number): string {
   return `${amount.toFixed(3)} KWD`;
 }
 
+export function formatKuwaitDateTime(isoTimestamp: string): string {
+  // "05 May 2026, 14:23 (GMT+3)" — used on payment receipts so the
+  // customer sees the exact instant the transaction landed in their
+  // own timezone, not UTC.
+  const d = new Date(isoTimestamp);
+  const datePart = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: KUWAIT_TZ,
+  }).format(d);
+  const timePart = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: KUWAIT_TZ,
+  }).format(d);
+  return `${datePart}, ${timePart} (GMT+3)`;
+}
+
 export function nextNDaysIso(n: number): string[] {
   const today = kuwaitTodayIso();
   const baseMs = Date.UTC(

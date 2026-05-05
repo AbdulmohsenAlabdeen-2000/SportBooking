@@ -12,6 +12,12 @@ import {
 import { getDict } from "@/lib/i18n";
 import { SPORT_ICON, sportLabel } from "@/lib/sports";
 import type { Sport } from "@/lib/types";
+import { createServerClient } from "@/lib/supabase/server";
+import { getPaymentStatus } from "@/lib/payments/myfatoorah";
+import {
+  PaymentReceipt,
+  type ReceiptTransaction,
+} from "@/components/customer/PaymentReceipt";
 
 type BookingPayload = {
   booking: {
@@ -43,6 +49,49 @@ async function fetchBooking(reference: string): Promise<BookingPayload | null> {
   return (await res.json()) as BookingPayload;
 }
 
+// Look up MyFatoorah's transaction details for the receipt block. Goes
+// direct to Supabase (service-role) for the invoice_id, then live-checks
+// MF for the latest attempt's PaymentId / TransactionId / ReferenceId.
+// Returns null on any error so the rest of the page still renders.
+async function fetchReceipt(
+  reference: string,
+): Promise<ReceiptTransaction | null> {
+  try {
+    const supabase = createServerClient();
+    const { data: row } = await supabase
+      .from("bookings")
+      .select("payment_invoice_id, total_price, paid_at")
+      .eq("reference", reference)
+      .maybeSingle<{
+        payment_invoice_id: string | null;
+        total_price: number | string;
+        paid_at: string | null;
+      }>();
+
+    if (!row?.payment_invoice_id) return null;
+    const status = await getPaymentStatus(Number(row.payment_invoice_id));
+    if (!status.ok) return null;
+
+    const tx =
+      status.data.InvoiceTransactions?.[
+        status.data.InvoiceTransactions.length - 1
+      ] ?? null;
+    if (!tx) return null;
+    return {
+      paymentId: tx.PaymentId || null,
+      transactionId: tx.TransactionId || null,
+      referenceId: tx.ReferenceId ?? tx.TrackId ?? null,
+      gateway: tx.PaymentGateway || null,
+      status: tx.TransactionStatus || status.data.InvoiceStatus,
+      amount: Number(status.data.InvoiceValue ?? row.total_price),
+      paidAt:
+        tx.TransactionDate ?? row.paid_at ?? status.data.CreatedDate,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const metadata = {
   title: "Booking Confirmed — Smash Courts Kuwait",
   robots: { index: false, follow: false },
@@ -61,6 +110,8 @@ export default async function ConfirmationPage({
   } catch {
     fetchError = true;
   }
+
+  const receipt = payload ? await fetchReceipt(params.reference) : null;
 
   if (fetchError) {
     return (
@@ -168,6 +219,12 @@ export default async function ConfirmationPage({
           </li>
         </ul>
       </Card>
+
+      {receipt ? (
+        <div className="mt-4">
+          <PaymentReceipt transaction={receipt} variant="success" />
+        </div>
+      ) : null}
 
       <p className="mt-4 rounded-xl bg-brand/5 px-4 py-3 text-sm text-slate-700">
         {t.confirmed.arrive_note}

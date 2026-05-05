@@ -9,6 +9,10 @@ import { getDict } from "@/lib/i18n";
 import { getPaymentStatus } from "@/lib/payments/myfatoorah";
 import { sendBookingConfirmationSms } from "@/lib/sms/booking-confirmation";
 import { isSupportedLocale, type Locale } from "@/lib/i18n/shared";
+import {
+  PaymentReceipt,
+  type ReceiptTransaction,
+} from "@/components/customer/PaymentReceipt";
 
 export const dynamic = "force-dynamic";
 
@@ -93,13 +97,36 @@ export default async function PaymentResultPage({
   // Live-check the payment status with MyFatoorah. This isn't a
   // replacement for the webhook (which writes the SMS-trigger
   // transition); it's just so we render the right UI without waiting.
+  // We also hold onto the full status data so we can render the
+  // gateway-level receipt details (PaymentId / TransactionId / etc.)
+  // on whichever branch we end up rendering.
   let live: "paid" | "pending" | "failed" = "pending";
+  let receipt: ReceiptTransaction | null = null;
   if (booking.payment_invoice_id) {
     const status = await getPaymentStatus(Number(booking.payment_invoice_id));
     if (status.ok) {
       const s = String(status.status).toLowerCase();
       if (s === "paid") live = "paid";
       else if (s === "failed" || s === "cancelled") live = "failed";
+
+      // Use the most recent transaction attempt — that's the one the
+      // customer is currently looking at. MyFatoorah orders newest-last;
+      // pick the last entry, fallback to the only entry.
+      const tx =
+        status.data.InvoiceTransactions?.[
+          status.data.InvoiceTransactions.length - 1
+        ] ?? null;
+      if (tx) {
+        receipt = {
+          paymentId: tx.PaymentId || null,
+          transactionId: tx.TransactionId || null,
+          referenceId: tx.ReferenceId ?? tx.TrackId ?? null,
+          gateway: tx.PaymentGateway || null,
+          status: tx.TransactionStatus || status.data.InvoiceStatus,
+          amount: Number(status.data.InvoiceValue),
+          paidAt: tx.TransactionDate ?? status.data.CreatedDate,
+        };
+      }
     }
   }
 
@@ -164,33 +191,38 @@ export default async function PaymentResultPage({
 
     return (
       <Container className="py-10 md:py-14">
-        <Card className="mx-auto max-w-md text-center">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600">
-            <XCircle className="h-7 w-7" aria-hidden />
-          </span>
-          <h1 className="mt-4 text-xl font-bold text-slate-900">
-            {t.payment_result.failed_title}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            {t.payment_result.failed_sub}
-          </p>
-          <p className="mt-1 font-mono text-xs text-slate-500">{reference}</p>
-          <div className="mt-5 flex flex-col gap-2">
-            <Link
-              href="/book"
-              className="inline-flex h-11 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-white hover:bg-accent-dark"
-            >
-              {t.payment_result.try_again}
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex h-11 items-center justify-center gap-1 text-sm text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
-              {t.common.home}
-            </Link>
-          </div>
-        </Card>
+        <div className="mx-auto max-w-md space-y-4">
+          <Card className="text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <XCircle className="h-7 w-7" aria-hidden />
+            </span>
+            <h1 className="mt-4 text-xl font-bold text-slate-900">
+              {t.payment_result.failed_title}
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              {t.payment_result.failed_sub}
+            </p>
+            <p className="mt-1 font-mono text-xs text-slate-500">{reference}</p>
+            <div className="mt-5 flex flex-col gap-2">
+              <Link
+                href="/book"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-white hover:bg-accent-dark"
+              >
+                {t.payment_result.try_again}
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex h-11 items-center justify-center gap-1 text-sm text-slate-600 hover:text-slate-900"
+              >
+                <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
+                {t.common.home}
+              </Link>
+            </div>
+          </Card>
+          {receipt ? (
+            <PaymentReceipt transaction={receipt} variant="failed" />
+          ) : null}
+        </div>
       </Container>
     );
   }

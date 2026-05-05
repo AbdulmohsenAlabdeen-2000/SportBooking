@@ -584,6 +584,16 @@ export const en = {
     refunded: "Refunded",
     pay_now: "Pay now",
   },
+  receipt: {
+    title: "Transaction details",
+    status: "Status",
+    amount: "Amount",
+    datetime: "Date & time",
+    gateway: "Gateway",
+    payment_id: "Payment ID",
+    transaction_id: "Transaction ID",
+    reference_id: "Reference ID",
+  },
   chat: {
     title: "Smash Courts Help",
     subtitle: "AI assistant",
