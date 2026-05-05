@@ -41,8 +41,14 @@ function getBaseUrl() {
 }
 
 async function fetchBooking(reference: string): Promise<BookingPayload | null> {
+  // Forward the visitor's cookie so the API's ownership check sees the
+  // logged-in customer. Without this the server-side fetch arrives with
+  // no session and any booking that has a user_id 404s — including the
+  // one the customer just paid for.
+  const cookie = headers().get("cookie") ?? "";
   const res = await fetch(`${getBaseUrl()}/api/bookings/${reference}`, {
     cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`booking_fetch_${res.status}`);
