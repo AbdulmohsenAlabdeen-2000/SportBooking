@@ -3,9 +3,19 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
 import { BOOKING_WINDOW_DAYS } from "@/lib/time";
+import { getClientIp, isLoopback, rateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Per-IP throughput cap. The endpoint is unauthenticated (it has to be —
+// customers can chat before signing in), and Anthropic charges per call,
+// so without a cap a hostile script can run up the bill quickly. The
+// numbers are generous for real human use: a determined customer can
+// send 30 messages in 5 minutes, then has to wait a few minutes — well
+// past anything a normal Q&A pattern would need.
+const CHAT_LIMIT = 30;
+const CHAT_WINDOW_MS = 5 * 60 * 1000;
 
 // Customer-facing AI chat support. Streams a Claude response with a
 // system prompt scoped to customer-level information only — pricing,
@@ -92,6 +102,20 @@ Friendly, concise, and direct. Do not start with greetings on follow-up turns. D
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return jsonError("chat_not_configured", 503);
+
+  const ip = getClientIp(req);
+  if (!isLoopback(ip)) {
+    const rl = rateLimit(`POST:/api/chat:${ip}`, CHAT_LIMIT, CHAT_WINDOW_MS);
+    if (!rl.ok) {
+      return new Response(JSON.stringify({ error: "rate_limited" }), {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+        },
+      });
+    }
+  }
 
   let body: { messages?: unknown };
   try {

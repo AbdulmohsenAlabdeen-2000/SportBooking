@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { createCookieClient } from "@/lib/supabase/route";
 import { jsonError } from "@/lib/api";
 import { isDemoMode } from "@/lib/demo/mode";
 import {
@@ -48,16 +49,46 @@ export async function GET(_req: Request, { params }: { params: { reference: stri
       status,
       customer_name,
       customer_phone,
+      user_id,
       created_at,
       court:courts(id, name, sport),
       slot:slots(start_time, end_time)
     `,
     )
     .eq("reference", reference)
-    .maybeSingle();
+    .maybeSingle<{
+      reference: string;
+      total_price: number | string;
+      status: string;
+      customer_name: string;
+      customer_phone: string;
+      user_id: string | null;
+      created_at: string;
+      court:
+        | { id: string; name: string; sport: string }
+        | { id: string; name: string; sport: string }[]
+        | null;
+      slot:
+        | { start_time: string; end_time: string }
+        | { start_time: string; end_time: string }[]
+        | null;
+    }>();
 
   if (error) return jsonError(error.message, 500);
   if (!data) return jsonError("booking_not_found", 404);
+
+  // Ownership check. Bookings made by an authenticated customer carry a
+  // user_id and are private to that user — others get 404 (not 403, so
+  // the endpoint doesn't confirm whether a reference exists). Anonymous
+  // bookings (admin-created or pre-account) stay public so the
+  // confirmation page works for guests.
+  if (data.user_id) {
+    const cookieClient = createCookieClient();
+    const { data: userResp } = await cookieClient.auth.getUser();
+    if (userResp.user?.id !== data.user_id) {
+      return jsonError("booking_not_found", 404);
+    }
+  }
 
   const court = Array.isArray(data.court) ? data.court[0] : data.court;
   const slot = Array.isArray(data.slot) ? data.slot[0] : data.slot;
