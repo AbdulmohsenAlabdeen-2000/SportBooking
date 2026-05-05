@@ -9,3 +9,8 @@ next-env.d.ts
 .vercel
 *.tsbuildinfo
 .claude/
+
+# Supabase CLI local metadata — created by `supabase link`. Contains
+# project ref, version pins, and the pooler URL; safe to leave out of
+# git since it's regenerated on `supabase link`.
+supabase/.temp/
