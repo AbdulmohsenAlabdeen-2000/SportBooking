@@ -34,7 +34,12 @@ export function isMyFatoorahConfigured(): boolean {
   return readConfig() !== null;
 }
 
-type MfResponse<T> = { IsSuccess: boolean; Message: string; Data: T };
+type MfResponse<T> = {
+  IsSuccess: boolean;
+  Message: string;
+  Data: T;
+  ValidationErrors?: Array<{ Name: string; Error: string }> | null;
+};
 
 async function callMf<T>(
   path: string,
@@ -63,7 +68,14 @@ async function callMf<T>(
       };
     }
     if (!json.IsSuccess) {
-      return { ok: false, error: json.Message || "myfatoorah_error" };
+      const validation = json.ValidationErrors?.length
+        ? " | " +
+          json.ValidationErrors.map((v) => `${v.Name}: ${v.Error}`).join("; ")
+        : "";
+      return {
+        ok: false,
+        error: (json.Message || "myfatoorah_error") + validation,
+      };
     }
     return { ok: true, data: json.Data };
   } catch (e) {
