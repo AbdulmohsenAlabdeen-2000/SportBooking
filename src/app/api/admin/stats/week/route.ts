@@ -81,7 +81,10 @@ export async function GET() {
   if (error) return jsonError(error.message, 500);
 
   const buckets = new Map<string, DayBucket>(
-    days.map((d) => [d, { date: d, bookings: 0, revenue_kwd: 0 }]),
+    days.map((d) => [
+      d,
+      { date: d, confirmed: 0, cancelled: 0, bookings: 0, revenue_kwd: 0 },
+    ]),
   );
 
   type Row = {

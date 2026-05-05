@@ -15,6 +15,7 @@ const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
+  declined: [], // terminal — payment never went through, no further admin action
 };
 
 type Patch = { status?: BookingStatus };

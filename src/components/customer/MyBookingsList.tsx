@@ -292,12 +292,15 @@ function StatusPill({ status, t }: { status: BookingStatus; t: Dict }) {
     confirmed: "bg-brand/10 text-brand border-brand/20",
     completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
     cancelled: "bg-red-50 text-red-700 border-red-200",
+    // declined rows are filtered server-side; defensive fallback only.
+    declined: "bg-slate-100 text-slate-600 border-slate-200",
   }[status];
   const label = {
     pending_payment: t.payment_status.awaiting,
     confirmed: t.me.status_confirmed,
     completed: t.me.status_completed,
     cancelled: t.me.status_cancelled,
+    declined: t.me.status_cancelled,
   }[status];
   return (
     <span

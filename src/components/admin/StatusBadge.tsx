@@ -9,12 +9,15 @@ const STYLES: Record<BookingStatus, string> = {
   confirmed: "bg-brand/10 text-brand border border-brand/20",
   completed: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   cancelled: "bg-red-50 text-red-700 border border-red-200",
+  // declined rows are filtered out before render; this is defensive only.
+  declined: "bg-slate-100 text-slate-600 border border-slate-200",
 };
 
 function label(status: BookingStatus, t: Dict): string {
   if (status === "pending_payment") return t.payment_status.awaiting;
   if (status === "confirmed") return t.admin.bookings_status_confirmed;
   if (status === "completed") return t.admin.bookings_status_completed;
+  if (status === "declined") return t.admin.bookings_status_cancelled;
   return t.admin.bookings_status_cancelled;
 }
 
