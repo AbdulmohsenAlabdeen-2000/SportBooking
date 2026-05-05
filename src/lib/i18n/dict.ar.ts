@@ -190,6 +190,9 @@ export const ar: Dict = {
     cancel_keep: "احتفظ بالحجز",
     cancelled_success: "تم إلغاء الحجز. الموعد متاح مرة أخرى.",
     cancelled_already_finalized: "هذا الحجز منتهٍ بالفعل.",
+    cancel_window_closed:
+      "بدأت المباراة بالفعل — يرجى التواصل مع الإدارة للإلغاء وطلب استرداد المبلغ.",
+    contact_admin_to_cancel: "تواصل مع الإدارة للإلغاء",
     not_found: "تعذّر العثور على هذا الحجز.",
     cant_cancel: "تعذّر الإلغاء — حاول مرة أخرى.",
     leave_review: "اكتب تقييماً",

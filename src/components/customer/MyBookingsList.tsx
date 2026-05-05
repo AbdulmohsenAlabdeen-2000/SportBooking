@@ -59,7 +59,12 @@ export function MyBookingsList({
         return;
       }
       if (res.status === 409) {
-        toast(t.me.cancelled_already_finalized, "error");
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        if (json.error === "cancel_window_closed") {
+          toast(t.me.cancel_window_closed, "error");
+        } else {
+          toast(t.me.cancelled_already_finalized, "error");
+        }
         router.refresh();
       } else if (res.status === 404) {
         toast(t.me.not_found, "error");
@@ -147,7 +152,15 @@ export function MyBookingsList({
                 t={t}
                 key={b.reference}
                 booking={b}
-                cancellable={b.status === "confirmed"}
+                // Once the slot has started, only the admin can refund.
+                // The customer sees a "contact admin" hint instead of
+                // a cancel button.
+                cancellable={false}
+                contactAdminToCancel={
+                  b.status === "confirmed" &&
+                  !!b.slot &&
+                  new Date(b.slot.start_time).getTime() <= Date.now()
+                }
                 onCancel={() => setConfirmCancel(b)}
                 onReview={() => setReviewOf(b)}
               />
@@ -186,12 +199,14 @@ function BookingCard({
   t,
   booking,
   cancellable,
+  contactAdminToCancel = false,
   onCancel,
   onReview,
 }: {
   t: Dict;
   booking: CustomerBooking;
   cancellable: boolean;
+  contactAdminToCancel?: boolean;
   onCancel?: () => void;
   onReview?: () => void;
 }) {
@@ -250,7 +265,10 @@ function BookingCard({
             ) : null}
           </div>
         </div>
-        {(cancellable || reviewable || booking.status === "pending_payment") && (
+        {(cancellable ||
+          contactAdminToCancel ||
+          reviewable ||
+          booking.status === "pending_payment") && (
           <div className="mt-3 flex flex-wrap justify-end gap-2">
             {booking.status === "pending_payment" && booking.payment_url ? (
               <a
@@ -278,6 +296,11 @@ function BookingCard({
               >
                 <XCircle className="h-4 w-4" aria-hidden /> {t.me.cancel_booking}
               </button>
+            ) : null}
+            {contactAdminToCancel ? (
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-600">
+                {t.me.contact_admin_to_cancel}
+              </span>
             ) : null}
           </div>
         )}

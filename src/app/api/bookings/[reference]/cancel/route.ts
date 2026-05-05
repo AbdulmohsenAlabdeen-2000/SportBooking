@@ -28,7 +28,7 @@ export async function POST(
   const { data: booking, error: lookupErr } = await supabase
     .from("bookings")
     .select(
-      "reference, status, user_id, total_price, payment_invoice_id, paid_at",
+      "reference, status, user_id, total_price, payment_invoice_id, paid_at, slot:slots(start_time)",
     )
     .eq("reference", reference)
     .maybeSingle<{
@@ -38,6 +38,7 @@ export async function POST(
       total_price: number | string;
       payment_invoice_id: string | null;
       paid_at: string | null;
+      slot: { start_time: string } | { start_time: string }[] | null;
     }>();
   if (lookupErr) return jsonError(lookupErr.message, 500);
   if (!booking || booking.user_id !== user.id) {
@@ -45,6 +46,12 @@ export async function POST(
   }
   if (booking.status !== "confirmed") {
     return jsonError("already_finalized", 409);
+  }
+  // Once the match's start time has passed, only an admin can cancel
+  // (and refund) — the customer must contact support.
+  const slot = Array.isArray(booking.slot) ? booking.slot[0] : booking.slot;
+  if (slot && new Date(slot.start_time).getTime() <= Date.now()) {
+    return jsonError("cancel_window_closed", 409);
   }
 
   const { data, error } = await supabase.rpc("cancel_booking", {

@@ -187,6 +187,9 @@ export const en = {
     cancel_keep: "Keep booking",
     cancelled_success: "Booking cancelled. Slot is open again.",
     cancelled_already_finalized: "This booking is already finalized.",
+    cancel_window_closed:
+      "The match has already started — please contact admin to cancel and request a refund.",
+    contact_admin_to_cancel: "Contact admin to cancel",
     not_found: "Couldn't find that booking.",
     cant_cancel: "Couldn't cancel — try again.",
     leave_review: "Leave a review",
