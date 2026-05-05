@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   LandPlot,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useDict } from "@/lib/i18n/client";
@@ -33,6 +34,11 @@ const LINKS: LinkSpec[] = [
   },
   { href: "/admin/slots", label: (t) => t.admin.nav_slots, Icon: Calendar },
   { href: "/admin/courts", label: (t) => t.admin.nav_courts, Icon: LandPlot },
+  {
+    href: "/admin/assistant",
+    label: (t) => t.admin.nav_assistant,
+    Icon: Sparkles,
+  },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {

@@ -351,6 +351,7 @@ export const en = {
     nav_bookings: "Bookings",
     nav_slots: "Slots",
     nav_courts: "Courts",
+    nav_assistant: "Assistant",
     nav_aria: "Admin navigation",
     bookings_title: "Bookings",
     bookings_sub: "Search and filter the booking history.",

@@ -353,6 +353,7 @@ export const ar: Dict = {
     nav_bookings: "الحجوزات",
     nav_slots: "المواعيد",
     nav_courts: "الملاعب",
+    nav_assistant: "المساعد",
     nav_aria: "تنقّل الإدارة",
     bookings_title: "الحجوزات",
     bookings_sub: "ابحث وصفّ سجلّ الحجوزات.",
