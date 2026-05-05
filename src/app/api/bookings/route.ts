@@ -231,7 +231,9 @@ export async function POST(req: Request) {
         invoiceAmount: Number(row.total_price),
         customerName: row.customer_name,
         customerEmail: input.customer_email ?? null,
-        customerMobile: row.customer_phone,
+        // MyFatoorah caps CustomerMobile at 11 chars — strip the leading "+"
+        // from our canonical "+96512345678" so we send "96512345678".
+        customerMobile: row.customer_phone.replace(/^\+/, ""),
         callbackUrl,
         errorUrl,
         customerReference: row.reference,
