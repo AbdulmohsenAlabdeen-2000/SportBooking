@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
 import { isAdminEmail } from "@/lib/auth";
 import { isDemoMode } from "@/lib/demo/mode";
@@ -17,27 +16,6 @@ export async function middleware(req: NextRequest) {
   if (isDemoMode()) return NextResponse.next();
 
   const isApi = pathname.startsWith("/api/");
-
-  // Admin MCP server: Bearer token auth, API-only. Skips Supabase entirely.
-  // The token is matched constant-time; mismatch falls through to a 401
-  // (not the cookie path) so we don't leak whether the token is "wrong"
-  // versus "absent". Browser-attached cookies on /admin/* still hit the
-  // Supabase path below.
-  if (isApi) {
-    const header = req.headers.get("authorization") ?? "";
-    if (header.startsWith("Bearer ")) {
-      const presented = header.slice("Bearer ".length).trim();
-      const expected = process.env.ADMIN_MCP_TOKEN ?? "";
-      if (
-        expected.length > 0 &&
-        presented.length === expected.length &&
-        timingSafeEqual(Buffer.from(presented), Buffer.from(expected))
-      ) {
-        return NextResponse.next();
-      }
-      return json401();
-    }
-  }
 
   const { supabase, response } = createMiddlewareClient(req);
   const {
