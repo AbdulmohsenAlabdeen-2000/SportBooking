@@ -89,7 +89,7 @@ export async function POST(req: Request) {
           : result.error === "court_not_found"
             ? 404
             : 409;
-      return jsonError(result.error, status);
+      return jsonError(result.error, status); // includes slot_in_past
     }
     const slot = demoGetSlotById(result.booking.slot_id);
     const court = demoGetCourtById(result.booking.court_id);
@@ -133,6 +133,11 @@ export async function POST(req: Request) {
   if (slotErr) return jsonError(slotErr.message, 500);
   if (!slot) return jsonError("slot_not_found", 404);
   if (slot.status !== "open") return jsonError("slot_not_available", 409);
+  // Reject slots whose start time is already in the past (Kuwait time
+  // ≡ UTC for "is now after?" comparisons — both are absolute instants).
+  if (new Date(slot.start_time).getTime() <= Date.now()) {
+    return jsonError("slot_in_past", 409);
+  }
 
   const { data: court, error: courtErr } = await supabase
     .from("courts")

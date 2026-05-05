@@ -189,13 +189,16 @@ export function createBooking(input: {
   customer_phone: string;
   customer_email: string | null;
   notes: string | null;
-}): { ok: true; booking: Booking } | { ok: false; error: "slot_not_found" | "slot_not_available" | "court_not_found" } {
+}): { ok: true; booking: Booking } | { ok: false; error: "slot_not_found" | "slot_not_available" | "court_not_found" | "slot_in_past" } {
   const store = getStore();
   const slotIdx = store.slots.findIndex((s) => s.id === input.slot_id);
   if (slotIdx === -1) return { ok: false, error: "slot_not_found" };
 
   const slot = store.slots[slotIdx];
   if (slot.status !== "open") return { ok: false, error: "slot_not_available" };
+  if (new Date(slot.start_time).getTime() <= Date.now()) {
+    return { ok: false, error: "slot_in_past" };
+  }
 
   const court = store.courts.find((c) => c.id === slot.court_id);
   if (!court) return { ok: false, error: "court_not_found" };

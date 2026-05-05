@@ -373,6 +373,27 @@ function SlotCell({
   const baseCls =
     "flex min-h-[56px] flex-col items-center justify-center rounded-xl text-base font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand";
 
+  // Past slots: render as a distinct "expired" state, regardless of
+  // whether the row in the DB is still nominally "open". The booking
+  // API also rejects them server-side.
+  if (slot.is_past && slot.status !== "booked") {
+    return (
+      <span
+        role="img"
+        title={t.book.past_title}
+        aria-label={format(t.book.past_aria, { time })}
+        className={`${baseCls} cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400`}
+      >
+        <span dir="ltr" className="line-through">
+          {time}
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-wider">
+          {t.book.past}
+        </span>
+      </span>
+    );
+  }
+
   if (slot.status === "booked") {
     return (
       <span

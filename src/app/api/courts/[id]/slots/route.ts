@@ -18,10 +18,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const { startUtc, endUtc } = kuwaitDateToUtcRange(v.date);
 
+  // Stamp is_past at read time so the UI can render "Closed (past)"
+  // without relying on a cron to flip statuses. The booking endpoint
+  // also re-checks server-side, so the boolean here is a UX hint, not
+  // a security boundary.
+  const nowMs = Date.now();
+  const stampPast = (s: Slot): Slot => ({
+    ...s,
+    is_past: new Date(s.start_time).getTime() <= nowMs,
+  });
+
   if (isDemoMode()) {
     const court = getCourtById(params.id);
     if (!court) return jsonError("court_not_found", 404);
-    const slots = listSlotsForCourtAndDate(params.id, startUtc, endUtc);
+    const slots = listSlotsForCourtAndDate(params.id, startUtc, endUtc).map(
+      stampPast,
+    );
     return NextResponse.json({ slots });
   }
 
@@ -45,5 +57,5 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (error) return jsonError(error.message, 500);
 
-  return NextResponse.json({ slots: (data ?? []) as Slot[] });
+  return NextResponse.json({ slots: ((data ?? []) as Slot[]).map(stampPast) });
 }

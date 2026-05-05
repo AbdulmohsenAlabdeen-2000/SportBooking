@@ -20,6 +20,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const windowStart = kuwaitDateToUtcRange(days[0]).startUtc;
   const windowEnd = kuwaitDateToUtcRange(days[days.length - 1]).endUtc;
 
+  // open_count excludes slots whose start_time is in the past so a day
+  // of expired slots renders as fully unavailable rather than "open".
+  const nowMs = Date.now();
+  const isFuture = (startTime: string) =>
+    new Date(startTime).getTime() > nowMs;
+
   if (isDemoMode()) {
     const court = getCourtById(params.id);
     if (!court) return jsonError("court_not_found", 404);
@@ -31,7 +37,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       );
       return {
         date: d,
-        open_count: dayRows.filter((s) => s.status === "open").length,
+        open_count: dayRows.filter(
+          (s) => s.status === "open" && isFuture(s.start_time),
+        ).length,
         total_count: dayRows.length,
       };
     });
@@ -67,7 +75,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       if (row.start_time >= range.startUtc && row.start_time < range.endUtc) {
         const b = buckets.get(day)!;
         b.total += 1;
-        if (row.status === "open") b.open += 1;
+        if (row.status === "open" && isFuture(row.start_time)) b.open += 1;
         break;
       }
     }

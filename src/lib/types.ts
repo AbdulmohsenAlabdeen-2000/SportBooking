@@ -52,6 +52,7 @@ export interface Slot {
   start_time: string;
   end_time: string;
   status: SlotStatus;
+  is_past?: boolean;
 }
 
 export interface Booking {
