@@ -95,10 +95,41 @@ export function formatKwd(amount: number): string {
   return `${amount.toFixed(3)} KWD`;
 }
 
+// Matches a trailing timezone designator on an ISO-like timestamp:
+// either a literal Z (UTC) or a numeric offset like +03:00 / -0530.
+const TIMEZONE_SUFFIX_RE = /(Z|[+-]\d{2}:?\d{2})$/;
+
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export function formatKuwaitDateTime(isoTimestamp: string): string {
-  // "05 May 2026, 14:23 (GMT+3)" — used on payment receipts so the
-  // customer sees the exact instant the transaction landed in their
-  // own timezone, not UTC.
+  // "05 May 2026, 14:23:18 (GMT+3)" — receipt-style.
+  //
+  // Two input shapes to handle:
+  //
+  // 1. ISO timestamp with timezone (`...Z` or `...+03:00`). Treat as a
+  //    real instant and project into Kuwait via Intl.
+  //
+  // 2. Naive timestamp with no timezone suffix (e.g. MyFatoorah returns
+  //    `"2026-05-05T14:23:18"` already in Kuwait wall-clock time). We
+  //    can't pass these through `new Date(...)` + Intl — JS parses them
+  //    as UTC on Vercel, and the tz conversion would add 3 hours we
+  //    don't want. Instead, parse the wall-clock parts and render them
+  //    directly.
+  if (!TIMEZONE_SUFFIX_RE.test(isoTimestamp)) {
+    const m = isoTimestamp.match(
+      /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/,
+    );
+    if (m) {
+      const [, year, month, day, hh, mm, ss = "00"] = m;
+      const monthName = MONTH_NAMES_SHORT[parseInt(month, 10) - 1] ?? month;
+      return `${day} ${monthName} ${year}, ${hh}:${mm}:${ss} (GMT+3)`;
+    }
+    // Unparseable — fall through and let Date/Intl do its best.
+  }
+
   const d = new Date(isoTimestamp);
   const datePart = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
