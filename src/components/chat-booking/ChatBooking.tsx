@@ -165,17 +165,20 @@ export function ChatBooking() {
         ];
       });
     } else if (evt.type === "error") {
-      appendError();
+      appendError(evt.message);
     }
   }
 
-  function appendError() {
+  function appendError(detail?: string) {
     setMessages((prev) => {
       const copy = [...prev];
       const last = copy[copy.length - 1];
-      const errText =
+      const baseText =
         t.chat_booking?.error ??
         "Sorry, something went wrong. Please try again.";
+      // Surface the upstream reason so issues like "model not found" or
+      // "missing API key" show up in the UI instead of being silent.
+      const errText = detail ? `${baseText}\n\n(${detail})` : baseText;
       if (last && last.role === "assistant" && last.streaming) {
         copy[copy.length - 1] = {
           role: "assistant",

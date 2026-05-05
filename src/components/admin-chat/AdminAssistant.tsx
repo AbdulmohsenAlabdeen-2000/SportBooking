@@ -153,15 +153,16 @@ export function AdminAssistant() {
         return copy;
       });
     } else if (evt.type === "error") {
-      appendError();
+      appendError(evt.message);
     }
   }
 
-  function appendError() {
+  function appendError(detail?: string) {
     setMessages((prev) => {
       const copy = [...prev];
       const last = copy[copy.length - 1];
-      const errText = "Sorry, something went wrong. Please try again.";
+      const base = "Sorry, something went wrong. Please try again.";
+      const errText = detail ? `${base}\n\n(${detail})` : base;
       if (last && last.role === "assistant" && last.streaming) {
         copy[copy.length - 1] = {
           role: "assistant",

@@ -16,7 +16,10 @@ import "server-only";
 //                        Claude variant; can be overridden in env to
 //                        swap quality / cost without redeploy.
 
-const DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
+// OpenRouter slugs change as new Anthropic versions ship — pin to a
+// concrete current Sonnet so model-not-found doesn't silently break
+// the chat. Override via OPENROUTER_MODEL env var when bumping.
+const DEFAULT_MODEL = "anthropic/claude-4.6-sonnet-20260217";
 
 export type Role = "system" | "user" | "assistant" | "tool";
 
