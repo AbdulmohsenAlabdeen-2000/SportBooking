@@ -584,6 +584,18 @@ export const en = {
     refunded: "Refunded",
     pay_now: "Pay now",
   },
+  chat: {
+    title: "Smash Courts Help",
+    subtitle: "AI assistant",
+    greeting:
+      "Hi! Ask me anything about courts, prices, hours, or how to book.",
+    placeholder: "Type your question…",
+    send_aria: "Send message",
+    open_aria: "Open help chat",
+    close_aria: "Close help chat",
+    error:
+      "Sorry, something went wrong. Please try again or call us if it's urgent.",
+  },
   passkey: {
     title: "Passkeys",
     subtitle:
