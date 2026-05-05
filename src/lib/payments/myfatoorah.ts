@@ -2,8 +2,9 @@ import "server-only";
 
 // Thin wrapper around the MyFatoorah v2 API. We call three endpoints:
 //
-//   POST /v2/ExecutePayment   — create an invoice and get the hosted
-//                                payment URL the customer is redirected to.
+//   POST /v2/SendPayment      — create an invoice and get the unified
+//                                hosted-payment URL where the customer
+//                                picks KNET / Visa / MC / Apple Pay etc.
 //   POST /v2/getPaymentStatus — fetch the current status of a payment
 //                                (used by the success-landing page as a
 //                                belt-and-braces check on top of webhooks).
@@ -86,11 +87,12 @@ async function callMf<T>(
   }
 }
 
-// ─── ExecutePayment ──────────────────────────────────────────────────────────
-// Creates an invoice and returns the hosted-payment URL we redirect the
-// customer to. PaymentMethodId 2 selects the unified "InvoicePayment"
-// page where MyFatoorah lets the customer pick K-Net / Visa / MC /
-// Apple Pay etc themselves.
+// ─── SendPayment ─────────────────────────────────────────────────────────────
+// Creates an invoice and returns a hosted-payment URL where the customer
+// picks any of the payment methods enabled on the account (KNET, Visa/MC,
+// Apple Pay, etc). NotificationOption "LNK" tells MyFatoorah to return
+// the link without also emailing/SMSing the invoice — we handle the
+// redirect ourselves.
 
 export type ExecutePaymentInput = {
   invoiceAmount: number; // KWD, e.g. 8.000
@@ -103,10 +105,10 @@ export type ExecutePaymentInput = {
   language?: "en" | "ar";
 };
 
-export type ExecutePaymentData = {
+type SendPaymentData = {
   InvoiceId: number;
   IsDirectPayment: boolean;
-  PaymentURL: string;
+  InvoiceURL: string;
   CustomerReference: string | null;
   UserDefinedField: string | null;
   RecurringId: string | null;
@@ -118,8 +120,8 @@ export async function executePayment(
   | { ok: true; invoiceId: number; paymentUrl: string }
   | { ok: false; error: string }
 > {
-  const result = await callMf<ExecutePaymentData>("/v2/ExecutePayment", {
-    PaymentMethodId: 2,
+  const result = await callMf<SendPaymentData>("/v2/SendPayment", {
+    NotificationOption: "LNK",
     InvoiceValue: input.invoiceAmount,
     CustomerName: input.customerName,
     CustomerEmail: input.customerEmail || undefined,
@@ -134,7 +136,7 @@ export async function executePayment(
   return {
     ok: true,
     invoiceId: result.data.InvoiceId,
-    paymentUrl: result.data.PaymentURL,
+    paymentUrl: result.data.InvoiceURL,
   };
 }
 
