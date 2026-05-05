@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+// Smash Courts Kuwait — Admin MCP server.
+//
+// Exposes a curated set of admin tools to MCP clients (Claude Desktop /
+// Claude Code). Every tool call hits the deployed Vercel admin API
+// authenticated with a single bearer token (`ADMIN_MCP_TOKEN`) — same
+// token the user puts on Vercel and in their Claude config. From the
+// user's perspective there's "no auth" because the token sits in env
+// once and works invisibly forever.
+//
+// Required env vars (set in the MCP client's server config):
+//   SMASH_API_URL    — e.g. https://sport-booking-pi.vercel.app
+//   ADMIN_MCP_TOKEN  — same value as on Vercel; matched constant-time
+//                      in middleware before any handler runs.
+//
+// Tools (read + a few safe writes):
+//   today_summary, week_chart, total_revenue,
+//   list_recent_bookings, get_booking, list_courts,
+//   mark_completed.
+//
+// Money-moving actions (cancel + refund, price changes) are
+// intentionally NOT exposed — those still go through the browser admin
+// UI where you can see what you're confirming.
+
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  type Tool,
+} from "@modelcontextprotocol/sdk/types.js";
+
+const API_URL = (process.env.SMASH_API_URL ?? "").replace(/\/$/, "");
+const TOKEN = process.env.ADMIN_MCP_TOKEN ?? "";
+
+if (!API_URL || !TOKEN) {
+  console.error(
+    "[smash-admin-mcp] Missing required env: SMASH_API_URL and ADMIN_MCP_TOKEN must be set in your MCP client config.",
+  );
+  process.exit(1);
+}
+
+async function api(
+  path: string,
+  init: RequestInit = {},
+): Promise<{ status: number; body: unknown }> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+  let body: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+  }
+  return { status: res.status, body };
+}
+
+function ok(data: unknown) {
+  return {
+    content: [
+      { type: "text" as const, text: JSON.stringify(data, null, 2) },
+    ],
+  };
+}
+
+function err(status: number, body: unknown) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text" as const,
+        text: `API returned ${status}: ${JSON.stringify(body)}`,
+      },
+    ],
+  };
+}
+
+const TOOLS: Tool[] = [
+  {
+    name: "today_summary",
+    description:
+      "Today's bookings list and stats (total / confirmed / completed / cancelled / revenue today). All times in Kuwait local time.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "week_chart",
+    description:
+      "Last 7 days of booking counts (confirmed and cancelled per day) and per-day revenue.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "total_revenue",
+    description:
+      "Lifetime revenue in KWD across every confirmed and completed booking ever. Cancellations excluded.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "list_recent_bookings",
+    description:
+      "List bookings with filters. Defaults to next 30 days from today. Filters: from/to (YYYY-MM-DD Kuwait), status (confirmed | completed | cancelled | all), court_id (UUID), q (search), page, pageSize.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "string", description: "YYYY-MM-DD (Kuwait date)" },
+        to: { type: "string", description: "YYYY-MM-DD (Kuwait date)" },
+        status: {
+          type: "string",
+          enum: ["all", "confirmed", "completed", "cancelled"],
+        },
+        court_id: { type: "string", description: "Court UUID" },
+        q: { type: "string", description: "Search reference / name / phone" },
+        page: { type: "integer", minimum: 1 },
+        pageSize: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_booking",
+    description:
+      "Get a single booking by reference (e.g. BK-2026-ABC12). Returns customer details, court, slot times, status, and payment fields.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        reference: {
+          type: "string",
+          description: "Booking reference, e.g. BK-2026-ABC12",
+        },
+      },
+      required: ["reference"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_courts",
+    description:
+      "All courts (active and inactive) with id, name, sport, capacity, price per slot, and is_active flag.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "mark_completed",
+    description:
+      "Mark a booking as completed (status confirmed → completed). Slot stays booked. Safe write — no refund, no money movement. Booking must currently be 'confirmed'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        reference: {
+          type: "string",
+          description: "Booking reference, e.g. BK-2026-ABC12",
+        },
+      },
+      required: ["reference"],
+      additionalProperties: false,
+    },
+  },
+];
+
+const server = new Server(
+  { name: "smash-courts-admin", version: "0.1.0" },
+  { capabilities: { tools: {} } },
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: TOOLS,
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  const name = req.params.name;
+  const args = (req.params.arguments ?? {}) as Record<string, unknown>;
+
+  switch (name) {
+    case "today_summary": {
+      const r = await api("/api/admin/bookings/today");
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "week_chart": {
+      const r = await api("/api/admin/stats/week");
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "total_revenue": {
+      const r = await api("/api/admin/stats/total");
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "list_recent_bookings": {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(args)) {
+        if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
+      }
+      const r = await api(
+        `/api/admin/bookings${qs.toString() ? `?${qs.toString()}` : ""}`,
+      );
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "get_booking": {
+      const ref = String(args.reference ?? "");
+      if (!ref) return err(400, { error: "missing_reference" });
+      const r = await api(`/api/admin/bookings/${encodeURIComponent(ref)}`);
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "list_courts": {
+      const r = await api("/api/admin/courts");
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "mark_completed": {
+      const ref = String(args.reference ?? "");
+      if (!ref) return err(400, { error: "missing_reference" });
+      const r = await api(
+        `/api/admin/bookings/${encodeURIComponent(ref)}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "completed" }),
+        },
+      );
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    default:
+      return err(400, { error: "unknown_tool", name });
+  }
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+console.error("[smash-admin-mcp] ready (stdio)");

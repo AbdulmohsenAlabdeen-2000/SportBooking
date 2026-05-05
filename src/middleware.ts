@@ -17,6 +17,24 @@ export async function middleware(req: NextRequest) {
 
   const isApi = pathname.startsWith("/api/");
 
+  // Admin MCP server: API-only Bearer-token bypass. Skips Supabase
+  // entirely. The token is matched constant-time using a pure-JS XOR
+  // compare so it works in Next.js' Edge runtime (which forbids
+  // node:crypto). Mismatch returns 401 directly — no fall-through to
+  // the cookie path, so we don't reveal whether the token is "wrong"
+  // versus "missing".
+  if (isApi) {
+    const header = req.headers.get("authorization") ?? "";
+    if (header.startsWith("Bearer ")) {
+      const presented = header.slice("Bearer ".length).trim();
+      const expected = process.env.ADMIN_MCP_TOKEN ?? "";
+      if (expected.length > 0 && constantTimeEqual(presented, expected)) {
+        return NextResponse.next();
+      }
+      return json401();
+    }
+  }
+
   const { supabase, response } = createMiddlewareClient(req);
   const {
     data: { user },
@@ -41,6 +59,20 @@ export async function middleware(req: NextRequest) {
 
 function json401() {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+
+// Length-checked XOR-OR compare. Same idea as node:crypto's
+// timingSafeEqual but works in the Edge runtime (no node:* imports).
+// Length mismatch returns false immediately — that itself leaks the
+// length of the presented token, but the token's length is fixed and
+// public anyway.
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 function redirectToLogin(
