@@ -48,6 +48,8 @@ async function loadMyBookings(userId: string) {
     `,
     )
     .eq("user_id", userId)
+    // Declined attempts (payment never completed) aren't real bookings.
+    .neq("status", "declined")
     .order("created_at", { ascending: false });
   if (error) return [];
   const rows = (data ?? []) as Row[];

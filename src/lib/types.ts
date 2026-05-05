@@ -29,7 +29,8 @@ export type BookingStatus =
   | "pending_payment"
   | "confirmed"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "declined";
 
 export interface Court {
   id: string;

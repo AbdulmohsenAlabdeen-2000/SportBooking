@@ -560,9 +560,9 @@ export const en = {
     missing_reference: "We couldn't find a booking reference in this URL.",
     not_found: "We couldn't find this booking.",
     back_to_booking: "Back to booking",
-    failed_title: "Payment didn't go through",
+    failed_title: "Your booking has failed",
     failed_sub:
-      "Your card wasn't charged. The slot has been released — pick another time and try again.",
+      "Your transaction was declined and the booking did not go through. Please try booking again.",
     pending_title: "Confirming your payment…",
     pending_sub:
       "This usually takes a few seconds. Refresh in a moment to see the result.",

@@ -11,7 +11,13 @@ import type { BookingStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type DayBucket = { date: string; bookings: number; revenue_kwd: number };
+type DayBucket = {
+  date: string;
+  confirmed: number;
+  cancelled: number;
+  bookings: number; // confirmed + cancelled, kept for chart total label
+  revenue_kwd: number;
+};
 
 export async function GET() {
   const today = kuwaitTodayIso();
@@ -30,19 +36,28 @@ export async function GET() {
   if (isDemoMode()) {
     const rows = demoBookingsInRange(windowStart, windowEnd);
     const buckets = new Map<string, DayBucket>(
-      days.map((d) => [d, { date: d, bookings: 0, revenue_kwd: 0 }]),
+      days.map((d) => [
+        d,
+        { date: d, confirmed: 0, cancelled: 0, bookings: 0, revenue_kwd: 0 },
+      ]),
     );
     for (const row of rows) {
+      // Skip declined attempts entirely — payment never went through.
+      if (row.status === "declined" || row.status === "pending_payment") continue;
       const slot = demoGetSlot(row.slot_id);
       if (!slot) continue;
       for (const day of days) {
         const range = kuwaitDateToUtcRange(day);
         if (slot.start_time >= range.startUtc && slot.start_time < range.endUtc) {
           const b = buckets.get(day)!;
-          b.bookings += 1;
-          if (row.status === "confirmed" || row.status === "completed") {
+          if (row.status === "cancelled") {
+            b.cancelled += 1;
+          } else {
+            // confirmed | completed
+            b.confirmed += 1;
             b.revenue_kwd += row.total_price;
           }
+          b.bookings = b.confirmed + b.cancelled;
           break;
         }
       }
@@ -76,16 +91,22 @@ export async function GET() {
   };
 
   for (const row of (data ?? []) as Row[]) {
+    // Skip declined attempts entirely — payment never went through.
+    if (row.status === "declined" || row.status === "pending_payment") continue;
     const slot = Array.isArray(row.slot) ? row.slot[0] : row.slot;
     if (!slot) continue;
     for (const day of days) {
       const range = kuwaitDateToUtcRange(day);
       if (slot.start_time >= range.startUtc && slot.start_time < range.endUtc) {
         const b = buckets.get(day)!;
-        b.bookings += 1;
-        if (row.status === "confirmed" || row.status === "completed") {
+        if (row.status === "cancelled") {
+          b.cancelled += 1;
+        } else {
+          // confirmed | completed
+          b.confirmed += 1;
           b.revenue_kwd += Number(row.total_price);
         }
+        b.bookings = b.confirmed + b.cancelled;
         break;
       }
     }

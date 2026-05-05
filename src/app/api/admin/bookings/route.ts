@@ -79,6 +79,8 @@ export async function GET(req: Request) {
 
   if (isDemoMode()) {
     let rows = demoBookingsInRange(startUtc, endUtc);
+    // Declined attempts (payment never completed) are not real bookings.
+    rows = rows.filter((r) => r.status !== "declined");
     if (statusParam !== "all") rows = rows.filter((r) => r.status === statusParam);
     if (courtParam) rows = rows.filter((r) => r.court_id === courtParam);
     if (q) {
@@ -145,6 +147,8 @@ export async function GET(req: Request) {
     .order("start_time", { foreignTable: "slot", ascending: false })
     .order("created_at", { ascending: false });
 
+  // Declined attempts (payment never completed) are not real bookings.
+  query = query.neq("status", "declined");
   if (statusParam !== "all") query = query.eq("status", statusParam);
   if (courtParam) query = query.eq("court_id", courtParam);
   if (q) {

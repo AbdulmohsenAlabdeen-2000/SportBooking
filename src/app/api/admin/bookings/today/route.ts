@@ -28,7 +28,10 @@ export async function GET() {
   const { startUtc, endUtc } = kuwaitDateToUtcRange(today);
 
   if (isDemoMode()) {
-    const rows = demoBookingsInRange(startUtc, endUtc);
+    // Declined attempts (payment never completed) are not real bookings.
+    const rows = demoBookingsInRange(startUtc, endUtc).filter(
+      (r) => r.status !== "declined",
+    );
     const bookings = rows
       .map((r) => {
         const court = demoGetCourt(r.court_id);
@@ -76,6 +79,7 @@ export async function GET() {
     )
     .gte("slot.start_time", startUtc)
     .lt("slot.start_time", endUtc)
+    .neq("status", "declined")
     .order("start_time", { foreignTable: "slot", ascending: true });
 
   if (error) return jsonError(error.message, 500);

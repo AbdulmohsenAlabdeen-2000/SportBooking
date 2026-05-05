@@ -143,14 +143,15 @@ export default async function PaymentResultPage({
   }
 
   if (live === "failed") {
-    // Webhooks aren't reliable for failed/abandoned payments — MyFatoorah
-    // sometimes doesn't fire one. Release the slot here so it doesn't
-    // stay reserved. Guard on pending_payment so we never downgrade an
-    // already-confirmed booking that raced with a late webhook.
+    // Payment never succeeded — mark the row as `declined` (not
+    // `cancelled`, which means "was paid then someone cancelled") and
+    // release the slot. Hidden from /me and admin per business rules.
+    // Guarded on pending_payment so a late webhook can't downgrade an
+    // already-confirmed booking.
     if (booking.status === "pending_payment") {
       await supabase
         .from("bookings")
-        .update({ status: "cancelled" })
+        .update({ status: "declined" })
         .eq("reference", reference)
         .eq("status", "pending_payment");
       if (booking.slot_id) {
