@@ -77,6 +77,8 @@ export const en = {
     capacity: "Up to {count} players",
     price_per_hour: "From {price} / hour",
     new: "New",
+    badge_new: "New",
+    badge_popular: "Popular",
     loading: "Courts loading…",
     loading_sub:
       "We're having trouble fetching courts right now. Please try again in a moment.",

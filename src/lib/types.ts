@@ -44,6 +44,11 @@ export interface Court {
   // Customer-facing /api/courts strips this (only returns active rows);
   // /api/admin/courts includes it so admins can reactivate from the UI.
   is_active?: boolean;
+  // Computed badges (only present on /api/courts response).
+  // is_new — court added in the recent window (default 30 days).
+  // is_popular — exceeded the recent-bookings threshold over the same window.
+  is_new?: boolean;
+  is_popular?: boolean;
 }
 
 export interface Slot {

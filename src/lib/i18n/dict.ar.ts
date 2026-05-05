@@ -82,6 +82,8 @@ export const ar: Dict = {
     capacity: "حتى {count} لاعبين",
     price_per_hour: "ابتداءً من {price} / ساعة",
     new: "جديد",
+    badge_new: "جديد",
+    badge_popular: "الأكثر طلباً",
     loading: "جارٍ تحميل الملاعب…",
     loading_sub:
       "نواجه مشكلة في جلب الملاعب الآن. حاول مرة أخرى بعد قليل.",

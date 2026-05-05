@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import { Star } from "lucide-react";
+import { Flame, Sparkles, Star } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { format, getDict } from "@/lib/i18n";
@@ -61,20 +61,23 @@ function CourtCard({
       className="group block focus:outline-none"
     >
       <Card className="flex h-full flex-col gap-4 overflow-hidden transition-all duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-brand group-active:translate-y-0 group-active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none">
-        {court.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={court.image_url}
-            alt={`${court.name}`}
-            loading="lazy"
-            decoding="async"
-            className="h-32 w-full rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none"
-          />
-        ) : (
-          <div className="flex h-32 items-center justify-center rounded-xl bg-brand/10 text-brand transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none">
-            <Icon className="h-12 w-12" aria-hidden />
-          </div>
-        )}
+        <div className="relative">
+          {court.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={court.image_url}
+              alt={`${court.name}`}
+              loading="lazy"
+              decoding="async"
+              className="h-32 w-full rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none"
+            />
+          ) : (
+            <div className="flex h-32 items-center justify-center rounded-xl bg-brand/10 text-brand transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none">
+              <Icon className="h-12 w-12" aria-hidden />
+            </div>
+          )}
+          <CourtBadges court={court} t={t} />
+        </div>
         <div className="flex flex-1 flex-col">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand">
@@ -92,11 +95,7 @@ function CourtCard({
                 {review.average.toFixed(1)}
                 <span className="text-slate-400">({review.count})</span>
               </span>
-            ) : (
-              <span className="text-[10px] uppercase tracking-wider text-slate-400">
-                {t.courts.new}
-              </span>
-            )}
+            ) : null}
           </div>
           <h3 className="mt-1 text-lg font-semibold text-slate-900">
             {court.name}
@@ -112,6 +111,28 @@ function CourtCard({
         </div>
       </Card>
     </Link>
+  );
+}
+
+// Overlay strip on the top-right of the court image. Multiple badges
+// stack vertically; if the court has neither, renders nothing.
+function CourtBadges({ court, t }: { court: Court; t: Dict }) {
+  if (!court.is_popular && !court.is_new) return null;
+  return (
+    <div className="absolute end-2 top-2 flex flex-col items-end gap-1">
+      {court.is_popular ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md ring-1 ring-amber-300/40">
+          <Flame className="h-3 w-3" aria-hidden />
+          {t.courts.badge_popular}
+        </span>
+      ) : null}
+      {court.is_new ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md ring-1 ring-sky-300/40">
+          <Sparkles className="h-3 w-3" aria-hidden />
+          {t.courts.badge_new}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

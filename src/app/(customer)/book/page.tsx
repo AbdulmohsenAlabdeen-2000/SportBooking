@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Flame, Sparkles } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 import { isUuid } from "@/lib/api";
@@ -95,9 +95,23 @@ export default async function CourtPickerPage({
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-                        {sportLabel(court.sport, t)}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
+                          {sportLabel(court.sport, t)}
+                        </p>
+                        {court.is_popular ? (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                            <Flame className="h-2.5 w-2.5" aria-hidden />
+                            {t.courts.badge_popular}
+                          </span>
+                        ) : null}
+                        {court.is_new ? (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                            <Sparkles className="h-2.5 w-2.5" aria-hidden />
+                            {t.courts.badge_new}
+                          </span>
+                        ) : null}
+                      </div>
                       <h2 className="mt-0.5 truncate text-base font-semibold text-slate-900">
                         {court.name}
                       </h2>
