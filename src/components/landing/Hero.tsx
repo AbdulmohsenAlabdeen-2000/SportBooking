@@ -80,8 +80,18 @@ export function Hero({ t }: { t: Dict }) {
               />
             </Link>
             <Link
+              href="/book/chat"
+              className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/15"
+            >
+              <Sparkles
+                className="h-4 w-4 text-amber-300 transition-transform group-hover:rotate-12 motion-reduce:transform-none"
+                aria-hidden
+              />
+              {t.hero.cta_chat ?? "Book by chat"}
+            </Link>
+            <Link
               href="/login"
-              className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/0 px-6 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
+              className="inline-flex items-center justify-center rounded-full px-6 py-4 text-sm font-medium text-white/80 transition-colors hover:text-white"
             >
               {t.hero.cta_secondary}
             </Link>

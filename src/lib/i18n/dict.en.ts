@@ -48,6 +48,7 @@ export const en = {
     sub: "Smash Courts Kuwait — pro-grade padel, tennis, and football pitches in Salmiya. Pick a slot, type your name, you're playing in under a minute.",
     cta_primary: "Book a Court",
     cta_secondary: "I have an account",
+    cta_chat: "Book by chat",
     pill_padel: "Padel",
     pill_tennis: "Tennis",
     pill_football: "Football",
@@ -598,6 +599,14 @@ export const en = {
     toggle: "Transaction details",
     loading: "Loading transaction details…",
     unavailable: "No transaction details available for this booking.",
+  },
+  chat_booking: {
+    title: "Book by chat",
+    subtitle: "Tell me what you want to play and when. I'll handle the rest.",
+    greeting:
+      "Hi! I can help you book a court. Tell me what sport you'd like to play, or say 'show me what's available'.",
+    placeholder: "What do you want to play? (e.g. 'padel tomorrow at 7pm')",
+    error: "Sorry, something went wrong. Please try again.",
   },
   chat: {
     title: "Smash Courts Help",
