@@ -16,18 +16,29 @@ import { useDict } from "@/lib/i18n/client";
 // 480px-wide drawer with a dimmed backdrop behind it.
 
 export const OPEN_EVENT = "smash:open-chat-booking";
+export const CLOSE_EVENT = "smash:close-chat-booking";
 
 export function SidePanelChatBooking() {
   const t = useDict();
   const [open, setOpen] = useState(false);
 
-  // Listen for the global open event from anywhere on the page.
+  // Listen for the global open/close events from anywhere on the page.
+  // Close is dispatched by the chat itself when handing off to the
+  // payment flow, so the panel doesn't sit on top of the booking
+  // details form.
   useEffect(() => {
     function onOpen() {
       setOpen(true);
     }
+    function onClose() {
+      setOpen(false);
+    }
     window.addEventListener(OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_EVENT, onOpen);
+    window.addEventListener(CLOSE_EVENT, onClose);
+    return () => {
+      window.removeEventListener(OPEN_EVENT, onOpen);
+      window.removeEventListener(CLOSE_EVENT, onClose);
+    };
   }, []);
 
   // Esc-to-close + body scroll lock while open.

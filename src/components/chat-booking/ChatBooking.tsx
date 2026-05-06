@@ -7,6 +7,7 @@ import { CourtPicker } from "./CourtPickerWidget";
 import { DatePicker } from "./DatePickerWidget";
 import { SlotPicker } from "./SlotPickerWidget";
 import { ConfirmBooking } from "./ConfirmBookingWidget";
+import { CLOSE_EVENT } from "./SidePanelChatBooking";
 import { useDict } from "@/lib/i18n/client";
 import type { ChatWidget } from "./widgets";
 
@@ -212,6 +213,10 @@ export function ChatBooking() {
     router.push(
       `/book/${courtId}/details?slot=${encodeURIComponent(slotId)}&date=${encodeURIComponent(date)}`,
     );
+    // Slide the panel out so the booking-details form behind it is
+    // visible. The router.push only changes the URL — the side panel
+    // is mounted in the customer layout and stays open by default.
+    window.dispatchEvent(new Event(CLOSE_EVENT));
   }
 
   return (
