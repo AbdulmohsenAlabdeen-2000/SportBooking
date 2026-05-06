@@ -148,6 +148,80 @@ const TOOLS: Tool[] = [
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
+    name: "create_court",
+    description:
+      "Add a new court to the catalog. When is_active=true (default), the API auto-generates 14 days of open slots so customers can book it immediately. Sport must match one of the supported values; price is in KWD; slot_duration_minutes must be 30, 45, 60, 90, or 120.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Display name, 2–80 characters.",
+        },
+        sport: {
+          type: "string",
+          enum: [
+            "padel",
+            "tennis",
+            "football",
+            "squash",
+            "basketball",
+            "volleyball",
+            "cricket",
+            "pickleball",
+            "badminton",
+            "futsal",
+          ],
+        },
+        capacity: { type: "integer", minimum: 1, maximum: 100 },
+        price_per_slot: { type: "number", minimum: 0 },
+        slot_duration_minutes: {
+          type: "integer",
+          enum: [30, 45, 60, 90, 120],
+          description: "Default 60.",
+        },
+        description: { type: "string", maxLength: 500 },
+        image_url: {
+          type: "string",
+          description: "Public https URL to a court photo.",
+        },
+        is_active: {
+          type: "boolean",
+          description:
+            "Default true. Inactive courts are hidden from customers and don't get auto-generated slots.",
+        },
+      },
+      required: ["name", "sport", "capacity", "price_per_slot"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "deactivate_court",
+    description:
+      "Hide a court from customers. Existing bookings stay valid; no new bookings can be created against it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        court_id: { type: "string", description: "Court UUID." },
+      },
+      required: ["court_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "reactivate_court",
+    description:
+      "Un-hide a previously deactivated court. Customers can book it again. Does not regenerate slots — those have to be created via the admin slot tools.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        court_id: { type: "string", description: "Court UUID." },
+      },
+      required: ["court_id"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "mark_completed",
     description:
       "Mark a booking as completed (status confirmed → completed). Slot stays booked. Safe write — no refund, no money movement. Booking must currently be 'confirmed'.",
@@ -209,6 +283,30 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     }
     case "list_courts": {
       const r = await api("/api/admin/courts");
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "create_court": {
+      const r = await api("/api/admin/courts", {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
+      return r.status === 201 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "deactivate_court": {
+      const id = String(args.court_id ?? "");
+      if (!id) return err(400, { error: "missing_court_id" });
+      const r = await api(`/api/admin/courts/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      return r.status === 200 ? ok(r.body) : err(r.status, r.body);
+    }
+    case "reactivate_court": {
+      const id = String(args.court_id ?? "");
+      if (!id) return err(400, { error: "missing_court_id" });
+      const r = await api(`/api/admin/courts/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: true }),
+      });
       return r.status === 200 ? ok(r.body) : err(r.status, r.body);
     }
     case "mark_completed": {
