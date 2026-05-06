@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/Container";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DemoBanner } from "@/components/DemoBanner";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { ChatWidget } from "@/components/customer/ChatWidget";
+import { SidePanelChatBooking } from "@/components/chat-booking/SidePanelChatBooking";
 import { getCurrentCustomer } from "@/lib/customer";
 import { format, getDict, getLocale } from "@/lib/i18n";
 
@@ -130,7 +130,7 @@ export default function CustomerLayout({
       <Header />
       <main className="min-h-[calc(100vh-4rem)]">{children}</main>
       <Footer />
-      <ChatWidget />
+      <SidePanelChatBooking />
     </ToastProvider>
   );
 }

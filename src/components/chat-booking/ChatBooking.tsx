@@ -193,15 +193,18 @@ export function ChatBooking() {
   }
 
   // Widget interaction handlers — each posts a synthetic user message
-  // back into the conversation so the model knows what was picked.
-  function pickCourt(_id: string, name: string) {
-    void ask(`I'll pick ${name}.`);
+  // back into the conversation. We include UUIDs so the model can pass
+  // them to the next tool without re-deriving them; sending only the
+  // human label (e.g. court name) breaks the chain because the model
+  // doesn't have the UUID in any earlier message.
+  function pickCourt(id: string, name: string) {
+    void ask(`Selected court: ${name} (court_id=${id}). Show me available dates.`);
   }
   function pickDate(date: string) {
-    void ask(`Date: ${date}.`);
+    void ask(`Selected date: ${date}. Show me the open time slots.`);
   }
   function pickSlot(slotId: string) {
-    void ask(`Slot: ${slotId}.`);
+    void ask(`Selected slot (slot_id=${slotId}). Prepare the booking.`);
   }
   function confirmBooking(courtId: string, slotId: string, startIso: string) {
     setConfirmBusy(true);
@@ -212,7 +215,7 @@ export function ChatBooking() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
+    <div className="flex h-full flex-col">
       <div className="border-b border-slate-200 bg-gradient-to-r from-brand to-brand-dark px-4 py-3 text-white shadow-sm">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">

@@ -608,6 +608,9 @@ export const en = {
       "Hi! I can help you book a court. Tell me what sport you'd like to play, or say 'show me what's available'.",
     placeholder: "What do you want to play? (e.g. 'padel tomorrow at 7pm')",
     error: "Sorry, something went wrong. Please try again.",
+    launcher_label: "Book by chat",
+    open_aria: "Open booking chat",
+    close_aria: "Close booking chat",
   },
   chat: {
     title: "Smash Courts Help",

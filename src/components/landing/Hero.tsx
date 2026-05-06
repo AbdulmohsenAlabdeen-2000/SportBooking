@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { FloatingSportsBg } from "@/components/landing/FloatingSportsBg";
+import { HeroChatCTA } from "@/components/landing/HeroChatCTA";
 import type { Dict } from "@/lib/i18n/dict.en";
 
 export function Hero({ t }: { t: Dict }) {
@@ -79,16 +80,7 @@ export function Hero({ t }: { t: Dict }) {
                 aria-hidden
               />
             </Link>
-            <Link
-              href="/book/chat"
-              className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/15"
-            >
-              <Sparkles
-                className="h-4 w-4 text-amber-300 transition-transform group-hover:rotate-12 motion-reduce:transform-none"
-                aria-hidden
-              />
-              {t.hero.cta_chat ?? "Book by chat"}
-            </Link>
+            <HeroChatCTA label={t.hero.cta_chat ?? "Book by chat"} />
             <Link
               href="/login"
               className="inline-flex items-center justify-center rounded-full px-6 py-4 text-sm font-medium text-white/80 transition-colors hover:text-white"
