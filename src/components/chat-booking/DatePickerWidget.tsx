@@ -18,7 +18,7 @@ export function DatePicker({
 }) {
   const today = kuwaitTodayIso();
   return (
-    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-7">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-1.5">
       {widget.days.map((d) => {
         const isToday = d.date === today;
         const isUnavailable = d.open_count === 0;

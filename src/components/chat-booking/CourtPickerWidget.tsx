@@ -17,7 +17,7 @@ export function CourtPicker({
 }) {
   const t = useDict();
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2">
       {widget.courts.map((c) => {
         const Icon = SPORT_ICON[c.sport];
         return (

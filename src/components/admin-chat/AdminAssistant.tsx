@@ -177,7 +177,10 @@ export function AdminAssistant() {
   }
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-8rem)] flex-col rounded-2xl border border-slate-200 bg-white shadow-sm md:-m-6">
+    // Mobile reserves: 56px sticky header + 56px bottom nav. Desktop
+    // reserves: 56px header + 32px main padding × 2. Use dvh so the
+    // chat doesn't get cropped when the mobile URL bar collapses.
+    <div className="-mx-4 -my-4 flex h-[calc(100dvh-7rem)] flex-col rounded-none border-0 bg-white shadow-none md:-mx-6 md:-my-6 md:h-[calc(100dvh-7rem)] md:rounded-2xl md:border md:border-slate-200 md:shadow-sm">
       <header className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">

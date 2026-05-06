@@ -84,7 +84,7 @@ export function AdminBottomNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-slate-200 bg-white md:hidden"
       aria-label={t.admin.nav_aria}
     >
       {LINKS.map(({ href, label, Icon, exact }) => {

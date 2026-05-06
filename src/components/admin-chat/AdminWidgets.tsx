@@ -33,7 +33,7 @@ export function TodaySummary({ widget }: { widget: TodaySummaryWidget }) {
       <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
         {formatKuwaitFullDate(widget.date)}
       </p>
-      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2">
         <Stat label="Total" value={widget.stats.total} />
         <Stat label="Confirmed" value={widget.stats.confirmed} tone="brand" />
         <Stat label="Completed" value={widget.stats.completed} tone="emerald" />

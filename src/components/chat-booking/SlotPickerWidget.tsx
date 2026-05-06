@@ -13,7 +13,7 @@ export function SlotPicker({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-1.5">
       {widget.slots.map((s) => {
         const time = formatKuwaitClock(s.start_time);
         const unavailable =

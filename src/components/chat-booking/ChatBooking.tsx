@@ -221,7 +221,7 @@ export function ChatBooking() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-slate-200 bg-gradient-to-r from-brand to-brand-dark px-4 py-3 text-white shadow-sm">
+      <div className="border-b border-slate-200 bg-gradient-to-r from-brand to-brand-dark px-4 py-3 pe-14 text-white shadow-sm">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
             <Sparkles className="h-4 w-4" aria-hidden />
