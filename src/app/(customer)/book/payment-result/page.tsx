@@ -8,6 +8,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getDict } from "@/lib/i18n";
 import { getPaymentStatus } from "@/lib/payments/myfatoorah";
 import { sendBookingConfirmationSms } from "@/lib/sms/booking-confirmation";
+import { sendBookingConfirmationEmail } from "@/lib/email/booking-confirmation";
 import { isSupportedLocale, type Locale } from "@/lib/i18n/shared";
 import {
   PaymentReceipt,
@@ -60,7 +61,7 @@ export default async function PaymentResultPage({
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "id, status, payment_invoice_id, slot_id, customer_name, customer_phone, locale, slot:slots(start_time, end_time), court:courts(name)",
+      "id, status, payment_invoice_id, slot_id, customer_name, customer_phone, customer_email, total_price, locale, slot:slots(start_time, end_time), court:courts(name)",
     )
     .eq("reference", reference)
     .maybeSingle<{
@@ -70,6 +71,8 @@ export default async function PaymentResultPage({
       slot_id: string | null;
       customer_name: string;
       customer_phone: string;
+      customer_email: string | null;
+      total_price: number | string;
       locale: string | null;
       slot: { start_time: string; end_time: string } | { start_time: string; end_time: string }[] | null;
       court: { name: string } | { name: string }[] | null;
@@ -154,15 +157,40 @@ export default async function PaymentResultPage({
       const slot = Array.isArray(booking.slot) ? booking.slot[0] : booking.slot;
       const locale: Locale = isSupportedLocale(booking.locale) ? booking.locale : "en";
       if (court && slot) {
-        await sendBookingConfirmationSms({
-          rawPhone: booking.customer_phone,
-          customerName: booking.customer_name,
-          courtName: court.name,
-          startIso: slot.start_time,
-          endIso: slot.end_time,
-          reference,
-          locale,
-        });
+        // Fan out the two notification channels in parallel. Both
+        // helpers are best-effort — neither throws if the provider
+        // is misconfigured or returns an error, so a Twilio outage
+        // can't block a Resend send and vice versa.
+        await Promise.all([
+          sendBookingConfirmationSms({
+            rawPhone: booking.customer_phone,
+            customerName: booking.customer_name,
+            courtName: court.name,
+            startIso: slot.start_time,
+            endIso: slot.end_time,
+            reference,
+            locale,
+          }),
+          sendBookingConfirmationEmail({
+            email: booking.customer_email,
+            customerName: booking.customer_name,
+            courtName: court.name,
+            startIso: slot.start_time,
+            endIso: slot.end_time,
+            reference,
+            totalPrice: Number(booking.total_price),
+            transaction: receipt
+              ? {
+                  paymentId: receipt.paymentId,
+                  transactionId: receipt.transactionId,
+                  referenceId: receipt.referenceId,
+                  gateway: receipt.gateway,
+                  status: receipt.status,
+                  paidAt: receipt.paidAt,
+                }
+              : null,
+          }),
+        ]);
       }
     }
 
