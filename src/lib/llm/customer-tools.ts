@@ -238,7 +238,11 @@ async function runListCourts(args: Record<string, unknown>): Promise<ToolResult>
 
 async function runListDates(args: Record<string, unknown>): Promise<ToolResult> {
   const courtId = typeof args.court_id === "string" ? args.court_id : "";
-  if (!courtId) return { text: "Error: court_id is required." };
+  if (!courtId) {
+    return {
+      text: "Error: court_id is required. The user hasn't picked a court yet — call list_courts first so they can pick one, then call list_dates with the chosen court_id.",
+    };
+  }
 
   const supabase = createServerClient();
   const { data: court, error: courtErr } = await supabase
@@ -291,8 +295,15 @@ async function runListDates(args: Record<string, unknown>): Promise<ToolResult> 
 async function runListSlots(args: Record<string, unknown>): Promise<ToolResult> {
   const courtId = typeof args.court_id === "string" ? args.court_id : "";
   const date = typeof args.date === "string" ? args.date : "";
-  if (!courtId || !date) {
-    return { text: "Error: court_id and date are required." };
+  if (!courtId) {
+    return {
+      text: "Error: court_id is required. The user hasn't picked a court yet — call list_courts first so they can pick one, then list_slots with the chosen court_id.",
+    };
+  }
+  if (!date) {
+    return {
+      text: "Error: date is required (YYYY-MM-DD). Call list_dates first if the user hasn't chosen a date, otherwise pass the date the user mentioned (e.g. tomorrow's date in Kuwait time).",
+    };
   }
 
   const supabase = createServerClient();
@@ -389,12 +400,22 @@ export function customerSystemPrompt(courtsHint: string): string {
 
 # How to behave
 - Be brief. Customers want to book quickly — don't lecture.
-- Use the tools rather than asking questions you can answer with a tool. If they say "show me what's available", call list_courts. If they pick a court, call list_dates. Then list_slots, then prepare_booking.
 - After every tool call, the user is shown a rich UI widget (court grid / date grid / slot grid / confirm card). Your text response should be short — the widget speaks for itself. One sentence is plenty.
-- If the customer is vague ("I want to play tomorrow"), pick the most likely path (call list_courts to start) rather than 20 clarifying questions.
 - Reply in the customer's language. Detect from their last message; default to English.
-- Never invent court names, prices, or times. They only exist if a tool call returned them.
+- Never invent court names, prices, slot IDs, or times. They only exist if a tool call returned them.
 - The booking is NOT created by you. After prepare_booking, the user clicks a "Confirm and pay" button in the confirm widget which does the real booking + redirect to MyFatoorah.
+
+# Tool sequencing — STRICT
+The tools have a required order. You MUST get a court_id before list_dates / list_slots / prepare_booking, and a slot_id before prepare_booking. If you don't have those yet, call the earlier tool first.
+
+  no court chosen        → call list_courts (optional sport filter)
+  court chosen, no date  → call list_dates with court_id
+  court + date, no slot  → call list_slots with court_id + date
+  court + slot picked    → call prepare_booking with both ids
+
+When the user mentions a date but hasn't picked a court ("what's open tomorrow", "play padel on Friday"), call list_courts first — DO NOT call list_dates or list_slots without a court_id. The court widget that appears will let them pick one, then you continue to the date step.
+
+Don't apologise for "not being able to load" something — just call the right earlier tool. The user shouldn't see plumbing errors.
 
 # Today
 - Today's Kuwait date: ${today}
