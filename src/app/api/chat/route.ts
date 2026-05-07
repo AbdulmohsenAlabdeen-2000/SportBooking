@@ -1,34 +1,33 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api";
 import { BOOKING_WINDOW_DAYS } from "@/lib/time";
 import { getClientIp, isLoopback, rateLimit } from "@/lib/ratelimit";
+import {
+  isOpenRouterConfigured,
+  streamChatCompletion,
+  type ChatMessage,
+} from "@/lib/llm/openrouter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Per-IP throughput cap. The endpoint is unauthenticated (it has to be —
-// customers can chat before signing in), and Anthropic charges per call,
-// so without a cap a hostile script can run up the bill quickly. The
-// numbers are generous for real human use: a determined customer can
-// send 30 messages in 5 minutes, then has to wait a few minutes — well
-// past anything a normal Q&A pattern would need.
+// Customer-facing AI help widget (the floating bubble at bottom-right
+// of every customer page — the simpler Q&A surface, distinct from
+// /book/chat which has tool-driven booking widgets).
+//
+// Migrated from the Anthropic SDK to OpenRouter so the whole project
+// uses a single LLM provider. Same system-prompt shape, same per-IP
+// rate limit, same streaming text response — the response body stays
+// plain UTF-8 text (NOT NDJSON like /api/chat-booking) because the
+// floating widget expects to decode bytes and append directly.
+//
+// Required env vars:
+//   OPENROUTER_API_KEY — sk-or-... key. Without it the widget returns
+//                        503 and the rest of the app continues.
+
 const CHAT_LIMIT = 30;
 const CHAT_WINDOW_MS = 5 * 60 * 1000;
-
-// Customer-facing AI chat support. Streams a Claude response with a
-// system prompt scoped to customer-level information only — pricing,
-// hours, booking flow, cancellation policy, court details. Admin-side
-// data (revenue, other customers' bookings, internal tooling) is never
-// exposed: the API only fetches public court info, and the prompt
-// explicitly tells the model to refuse admin-scoped questions.
-//
-// Caching: the system prompt is static across all requests, so the
-// `cache_control: { type: "ephemeral" }` breakpoint at the top level
-// caches it for ~10% the cost on follow-up turns.
-
-type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const MAX_HISTORY = 20;
 const MAX_INPUT_LEN = 2000;
@@ -99,9 +98,10 @@ You also do not have access to any specific customer's account, bookings, or pay
 Friendly, concise, and direct. Do not start with greetings on follow-up turns. Do not use emoji. Keep answers short — usually 1–3 sentences unless the customer asked for detail.`;
 }
 
+type IncomingMessage = { role: "user" | "assistant"; content: string };
+
 export async function POST(req: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return jsonError("chat_not_configured", 503);
+  if (!isOpenRouterConfigured()) return jsonError("chat_not_configured", 503);
 
   const ip = getClientIp(req);
   if (!isLoopback(ip)) {
@@ -124,11 +124,9 @@ export async function POST(req: Request) {
     return jsonError("invalid_json", 400);
   }
 
-  if (!Array.isArray(body.messages)) {
-    return jsonError("invalid_messages", 400);
-  }
+  if (!Array.isArray(body.messages)) return jsonError("invalid_messages", 400);
 
-  const messages: ChatMessage[] = [];
+  const incoming: IncomingMessage[] = [];
   for (const m of body.messages) {
     if (!m || typeof m !== "object") continue;
     const role = (m as { role?: unknown }).role;
@@ -138,35 +136,33 @@ export async function POST(req: Request) {
       typeof content === "string" &&
       content.trim().length > 0
     ) {
-      messages.push({ role, content: content.slice(0, MAX_INPUT_LEN) });
+      incoming.push({ role, content: content.slice(0, MAX_INPUT_LEN) });
     }
   }
-  if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
+  if (incoming.length === 0 || incoming[incoming.length - 1].role !== "user") {
     return jsonError("invalid_messages", 400);
   }
 
-  const trimmed = messages.slice(-MAX_HISTORY);
+  const trimmed = incoming.slice(-MAX_HISTORY);
   const system = await buildSystemPrompt();
 
-  const client = new Anthropic({ apiKey });
+  const conversation: ChatMessage[] = [
+    { role: "system", content: system },
+    ...trimmed,
+  ];
 
-  const upstream = client.messages.stream({
-    model: "claude-opus-4-7",
-    max_tokens: 1024,
-    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    messages: trimmed,
-  });
-
+  // No tool definitions on this surface — it's pure Q&A. The widget
+  // reads the response as plain text, so we only forward `text`
+  // events from the wrapper. Tool / done / error events are absorbed.
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of upstream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
+        for await (const event of streamChatCompletion({
+          messages: conversation,
+        })) {
+          if (event.type === "text") {
+            controller.enqueue(encoder.encode(event.delta));
           }
         }
         controller.close();
