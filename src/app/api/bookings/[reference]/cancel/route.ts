@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { createCookieClient } from "@/lib/supabase/route";
 import { jsonError } from "@/lib/api";
 import { makeRefund } from "@/lib/payments/myfatoorah";
+import { dispatchWebhook } from "@/lib/webhooks/n8n";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,13 @@ export async function POST(
         .eq("reference", reference);
     }
   }
+
+  await dispatchWebhook("booking.cancelled", {
+    reference,
+    cancelled_by: "customer",
+    was_paid: !!(booking.payment_invoice_id && booking.paid_at),
+    total_price: Number(booking.total_price),
+  });
 
   return NextResponse.json({ booking: data });
 }

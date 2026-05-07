@@ -9,6 +9,7 @@ import { getDict } from "@/lib/i18n";
 import { getPaymentStatus } from "@/lib/payments/myfatoorah";
 import { sendBookingConfirmationSms } from "@/lib/sms/booking-confirmation";
 import { sendBookingConfirmationEmail } from "@/lib/email/booking-confirmation";
+import { dispatchWebhook } from "@/lib/webhooks/n8n";
 import { isSupportedLocale, type Locale } from "@/lib/i18n/shared";
 import {
   PaymentReceipt,
@@ -157,10 +158,10 @@ export default async function PaymentResultPage({
       const slot = Array.isArray(booking.slot) ? booking.slot[0] : booking.slot;
       const locale: Locale = isSupportedLocale(booking.locale) ? booking.locale : "en";
       if (court && slot) {
-        // Fan out the two notification channels in parallel. Both
-        // helpers are best-effort — neither throws if the provider
-        // is misconfigured or returns an error, so a Twilio outage
-        // can't block a Resend send and vice versa.
+        // Fan out the three notification channels in parallel. All
+        // helpers are best-effort — none of them throw, so a Twilio
+        // outage can't block a Resend send, an n8n outage can't
+        // block either, etc.
         await Promise.all([
           sendBookingConfirmationSms({
             rawPhone: booking.customer_phone,
@@ -190,6 +191,17 @@ export default async function PaymentResultPage({
                 }
               : null,
           }),
+          dispatchWebhook("booking.confirmed", {
+            reference,
+            customer_name: booking.customer_name,
+            customer_phone: booking.customer_phone,
+            customer_email: booking.customer_email,
+            court_name: court.name,
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            total_price: Number(booking.total_price),
+            transaction: receipt,
+          }),
         ]);
       }
     }
@@ -204,6 +216,16 @@ export default async function PaymentResultPage({
     // Guarded on pending_payment so a late webhook can't downgrade an
     // already-confirmed booking.
     if (booking.status === "pending_payment") {
+      // Fire the n8n webhook for declined attempts. Useful for
+      // attribution / fraud-watch dashboards even though we don't
+      // surface declined rows in /me or admin.
+      await dispatchWebhook("booking.declined", {
+        reference,
+        customer_name: booking.customer_name,
+        customer_phone: booking.customer_phone,
+        customer_email: booking.customer_email,
+        transaction: receipt,
+      });
       await supabase
         .from("bookings")
         .update({ status: "declined" })

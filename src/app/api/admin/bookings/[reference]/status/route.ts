@@ -4,6 +4,7 @@ import { jsonError } from "@/lib/api";
 import { isDemoMode } from "@/lib/demo/mode";
 import { updateBookingStatus as demoUpdateStatus } from "@/lib/demo/store";
 import { makeRefund } from "@/lib/payments/myfatoorah";
+import { dispatchWebhook } from "@/lib/webhooks/n8n";
 import type { BookingStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -110,6 +111,13 @@ export async function PATCH(
       }
     }
 
+    await dispatchWebhook("booking.cancelled", {
+      reference,
+      cancelled_by: "admin",
+      was_paid: !!(paid?.payment_invoice_id && paid.paid_at),
+      total_price: paid?.total_price ? Number(paid.total_price) : null,
+    });
+
     return NextResponse.json({ booking: data });
   }
 
@@ -123,6 +131,8 @@ export async function PATCH(
     .maybeSingle();
   if (error) return jsonError(error.message, 500);
   if (!data) return jsonError("already_finalized", 409);
+
+  await dispatchWebhook("booking.completed", { reference });
 
   return NextResponse.json({ booking: data });
 }

@@ -7,6 +7,7 @@ import {
   KUWAIT_OFFSET_HOURS,
   nextNDaysIso,
 } from "@/lib/time";
+import { dispatchWebhook } from "@/lib/webhooks/n8n";
 import type { Court } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,17 @@ export async function POST(req: Request) {
       console.error("Auto-slot creation failed for court", court.id, slotErr.message);
     }
   }
+
+  await dispatchWebhook("court.created", {
+    id: court.id,
+    name: court.name,
+    sport: court.sport,
+    capacity: court.capacity,
+    price_per_slot: Number(court.price_per_slot),
+    slot_duration_minutes: court.slot_duration_minutes,
+    is_active: court.is_active,
+    image_url: court.image_url,
+  });
 
   return NextResponse.json({ court: court as Court }, { status: 201 });
 }
